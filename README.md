@@ -1,2 +1,1 @@
-# GAN-metrics
-Generative models most popular metrics
+# Standard GAN Metrics in Pytorch
