@@ -1,13 +1,19 @@
 import torch
+import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
 from torch.hub import load_state_dict_from_url
+from torch.utils.data import DataLoader
+
+from typing import Union
+from tqdm import tqdm
 
 # Inception weights ported to Pytorch from
 # http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz
-FID_WEIGHTS_URL = ('https://github.com/w86763777/pytorch-gan-metrics/releases/'
-                   'download/v0.1.0/pt_inception-2015-12-05-6726825d.pth')
+# FID_WEIGHTS_URL = ('https://github.com/w86763777/pytorch-gan-metrics/releases/'
+#                    'download/v0.1.0/pt_inception-2015-12-05-6726825d.pth')
+FID_WEIGHTS_PTH = ('pt_inception-2015-12-05-6726825d.pth')
 
 
 class InceptionV3(nn.Module):
@@ -33,6 +39,7 @@ class InceptionV3(nn.Module):
                  requires_grad=False,
                  use_fid_inception=True):
         """Build pretrained InceptionV3
+
         Args:
             output_blocks : List of int
                 Indices of blocks to return features of. Possible values are:
@@ -131,10 +138,12 @@ class InceptionV3(nn.Module):
 
     def forward(self, x):
         """Get Inception feature maps
+
         Args:
             x : torch.FloatTensor,Input tensor of shape [B x 3 x H x W]. If
                 `normalize_input` is True, values are expected to be in range
                 [0, 1]; Otherwise, values are expected to be in range [-1, 1].
+
         Returns:
             List of torch.FloatTensor, corresponding to the selected output
             block, sorted ascending by index
@@ -168,11 +177,51 @@ class InceptionV3(nn.Module):
 
         return outputs
 
+    def get_features(
+        self,
+        loader: DataLoader,
+        dim: int,
+        use_torch: bool = False,
+        verbose: bool = False,
+        device: torch.device = torch.device('cuda:0'),
+    ) -> Union[torch.FloatTensor, np.ndarray]:
+        """
+        Description
+        """
+        assert dim in self.BLOCK_INDEX_BY_DIM
+        self.output_blocks = [InceptionV3.BLOCK_INDEX_BY_DIM[dim]]
+        assert self.output_blocks[0] <= self.last_needed_block
+
+        self.to(device)
+        self.eval()
+
+        features = []
+        pbar = tqdm(loader, disable=not verbose, desc="get_features")
+        with torch.no_grad():
+            for batch in pbar:
+                batch = batch.to(device)
+                output = self.forward(batch)[0].view(-1, dim)
+                if use_torch:
+                    output = output.view(output.shape[0], -1, output.shape[1])
+                else:
+                    output = output.cpu().numpy()
+                features.extend(list(output))
+
+        if use_torch:
+            features = torch.cat(features)
+        else:
+            features = np.array(features)
+
+        pbar.close()
+        return features
+
 
 def fid_inception_v3():
     """Build pretrained Inception model for FID computation
+
     The Inception model for FID computation uses a different set of weights
     and has a slightly different structure than torchvision's Inception.
+
     This method first constructs torchvision's Inception and then patches the
     necessary parts that are different in the FID Inception model.
     """
@@ -190,8 +239,11 @@ def fid_inception_v3():
     inception.Mixed_7b = FIDInceptionE_1(1280)
     inception.Mixed_7c = FIDInceptionE_2(2048)
 
-    state_dict = load_state_dict_from_url(FID_WEIGHTS_URL, progress=True)
-    inception.load_state_dict(state_dict)
+    # state_dict = load_state_dict_from_url(FID_WEIGHTS_URL, progress=True)
+    # inception.load_state_dict(state_dict)
+
+    inception.load_state_dict(torch.load(FID_WEIGHTS_PTH))
+
     return inception
 
 
