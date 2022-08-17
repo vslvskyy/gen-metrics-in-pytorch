@@ -6,88 +6,8 @@ from scipy import linalg
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 
+from .base_class import BaseGanMetricComp
 from .inception_net import InceptionV3
-
-
-# device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-
-
-def get_inception_feature(
-    images: Union[List[torch.FloatTensor], DataLoader],
-    dims: List[int],
-    batch_size: int = 50,
-    use_torch: bool = False,
-    verbose: bool = False,
-    device: torch.device = torch.device('cuda:0'),
-) -> Union[torch.FloatTensor, np.ndarray]:
-    """Calculate Inception Score and FID.
-    For each image, only a forward propagation is required to
-    calculating features for FID and Inception Score.
-    Args:
-        images: List of tensor or torch.utils.data.Dataloader. The return image
-            must be float tensor of range [0, 1].
-        dims: List of int, see InceptionV3.BLOCK_INDEX_BY_DIM for
-            available dimension.
-        batch_size: int, The batch size for calculating activations. If
-            `images` is torch.utils.data.Dataloader, this argument is
-            ignored.
-        use_torch: bool. The default value is False and the backend is same as
-            official implementation, i.e., numpy. If use_torch is enableb,
-            the backend linalg is implemented by torch, the results are not
-            guaranteed to be consistent with numpy, but the speed can be
-            accelerated by GPU.
-        verbose: Set verbose to False for disabling progress bar. Otherwise,
-            the progress bar is showing when calculating activations.
-        device: the torch device which is used to calculate inception feature
-    Returns:
-        inception_score: float tuple, (mean, std)
-        fid: float
-    """
-    assert all(dim in InceptionV3.BLOCK_INDEX_BY_DIM for dim in dims)
-
-    is_dataloader = isinstance(images, DataLoader)
-    if is_dataloader:
-        num_images = min(len(images.dataset), images.batch_size * len(images))
-        batch_size = images.batch_size
-    else:
-        num_images = len(images)
-
-    block_idxs = [InceptionV3.BLOCK_INDEX_BY_DIM[dim] for dim in dims]
-    model = InceptionV3(block_idxs).to(device)
-    model.eval()
-
-    if use_torch:
-        features = [torch.empty((num_images, dim)).to(device) for dim in dims]
-    else:
-        features = [np.empty((num_images, dim)) for dim in dims]
-
-    pbar = tqdm(
-        total=num_images, dynamic_ncols=True, leave=False,
-        disable=not verbose, desc="get_inception_feature")
-    looper = iter(images)
-    start = 0
-    while start < num_images:
-        # get a batch of images from iterator
-        if is_dataloader:
-            batch_images = next(looper)
-        else:
-            batch_images = images[start: start + batch_size]
-        end = start + len(batch_images)
-
-        # calculate inception feature
-        batch_images = batch_images.to(device)
-        with torch.no_grad():
-            outputs = model(batch_images)
-            for feature, output, dim in zip(features, outputs, dims):
-                if use_torch:
-                    feature[start: end] = output.view(-1, dim)
-                else:
-                    feature[start: end] = output.view(-1, dim).cpu().numpy()
-        start = end
-        pbar.update(len(batch_images))
-    pbar.close()
-    return features
-
 
 def torch_cov(m, rowvar=False):
     '''Estimate a covariance matrix given data.
@@ -118,7 +38,6 @@ def torch_cov(m, rowvar=False):
     mt = m.t()  # if complex: mt = m.t().conj()
     return fact * m.matmul(mt).squeeze()
 
-
 # Pytorch implementation of matrix sqrt, from Tsung-Yu Lin, and Subhransu Maji
 # https://github.com/msubhransu/matrix-sqrt
 def sqrt_newton_schulz(A, numIters, dtype=None):
@@ -141,86 +60,44 @@ def sqrt_newton_schulz(A, numIters, dtype=None):
     return sA
 
 
-def calculate_frechet_inception_distance(
-    acts: Union[torch.FloatTensor, np.ndarray],
-    mu: np.ndarray,
-    sigma: np.ndarray,
-    use_torch: bool = False,
-    eps: float = 1e-6,
-    device: torch.device = torch.device('cuda:0'),
-) -> float:
-    if use_torch:
-        m1 = torch.mean(acts, axis=0)
-        s1 = torch_cov(acts, rowvar=False)
-        mu = torch.tensor(mu).to(m1.dtype).to(device)
-        sigma = torch.tensor(sigma).to(s1.dtype).to(device)
-    else:
-        m1 = np.mean(acts, axis=0)
-        s1 = np.cov(acts, rowvar=False)
-    return calculate_frechet_distance(m1, s1, mu, sigma, use_torch, eps)
+class FID(BaseGanMetricComp):
 
+    def calc_stats(self, loader, batch_size=50, use_torch=False, device: torch.device = torch.device('cuda:0')): # add loader
+        model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]]).to(device)
+        acts = model.get_features(loader, dim=2048, use_torch=use_torch)
+        if use_torch:
+            mu = torch.mean(acts, axis=0)
+            sigma = torch_cov(acts)
+        else:
+            mu = np.mean(acts, axis=0)
+            sigma = np.cov(acts, rowvar=False)
+        return (mu, sigma)
 
-def calculate_frechet_distance(
-    mu1: Union[torch.FloatTensor, np.ndarray],
-    sigma1: Union[torch.FloatTensor, np.ndarray],
-    mu2: Union[torch.FloatTensor, np.ndarray],
-    sigma2: Union[torch.FloatTensor, np.ndarray],
-    use_torch: bool = False,
-    eps: float = 1e-6,
-) -> float:
-    """Frechet Distance
-    Args:
-        mu1: The sample mean over activations for generated samples.
-        mu2: The sample mean over activations, precalculated on an reference
-            data set.
-        sigma1: The covariance matrix over activations for generated samples.
-        sigma2: The covariance matrix over activations, precalculated on an
-            reference data set.
-        eps: prevent covmean from being singular matrix
-        use_torch: use torch as backend
-    Returns:
-        The Frechet Distance.
-    """
+    def calc_fd_in_np(
+        self,
+        m1: np.ndarray,
+        s1: np.ndarray,
+        m2: np.ndarray,
+        s2: np.ndarray,
+        eps: float = 1e-6
+    ) -> float:
 
-    if use_torch:
-        assert mu1.shape == mu2.shape, \
-            'Training and test mean vectors have different lengths'
-        assert sigma1.shape == sigma2.shape, \
-            'Training and test covariances have different dimensions'
+        m1 = np.atleast_1d(m1)
+        m2 = np.atleast_1d(m2)
 
-        diff = mu1 - mu2
-        # Run 50 itrs of newton-schulz to get the matrix sqrt of
-        # sigma1 dot sigma2
-        covmean = sqrt_newton_schulz(sigma1.mm(sigma2).unsqueeze(0), 50)
-        if torch.any(torch.isnan(covmean)):
-            return float('nan')
-        covmean = covmean.squeeze()
-        out = (diff.dot(diff) +
-               torch.trace(sigma1) +
-               torch.trace(sigma2) -
-               2 * torch.trace(covmean)).cpu().item()
-    else:
-        mu1 = np.atleast_1d(mu1)
-        mu2 = np.atleast_1d(mu2)
+        s1 = np.atleast_2d(s1)
+        s2 = np.atleast_2d(s2)
 
-        sigma1 = np.atleast_2d(sigma1)
-        sigma2 = np.atleast_2d(sigma2)
-
-        assert mu1.shape == mu2.shape, \
-            'Training and test mean vectors have different lengths'
-        assert sigma1.shape == sigma2.shape, \
-            'Training and test covariances have different dimensions'
-
-        diff = mu1 - mu2
+        diff = m1 - m2
 
         # Product might be almost singular
-        covmean, _ = linalg.sqrtm(sigma1.dot(sigma2), disp=False)
+        covmean, _ = linalg.sqrtm(s1.dot(s2), disp=False)
         if not np.isfinite(covmean).all():
             msg = ('fid calculation produces singular product; '
-                   'adding %s to diagonal of cov estimates') % eps
+                'adding %s to diagonal of cov estimates') % eps
             print(msg)
-            offset = np.eye(sigma1.shape[0]) * eps
-            covmean = linalg.sqrtm((sigma1 + offset).dot(sigma2 + offset))
+            offset = np.eye(s1.shape[0]) * eps
+            covmean = linalg.sqrtm((s1 + offset).dot(s2 + offset))
 
         # Numerical error might give slight imaginary component
         if np.iscomplexobj(covmean):
@@ -231,32 +108,60 @@ def calculate_frechet_distance(
 
         tr_covmean = np.trace(covmean)
 
-        out = (diff.dot(diff) +
-               np.trace(sigma1) +
-               np.trace(sigma2) -
-               2 * tr_covmean)
-    return out
+        fd = (diff.dot(diff) +
+            np.trace(s1) +
+            np.trace(s2) -
+            2 * tr_covmean)
+        return fd
 
+    def calc_fd_in_torch(
+        self,
+        m1: torch.Tensor,
+        s1: torch.Tensor,
+        m2: torch.Tensor,
+        s2: torch.Tensor,
+        eps: float = 1e-6
+    ) -> float:
 
-def get_fid(
-    images: Union[torch.FloatTensor, DataLoader],
-    fid_stats_path: str,
-    use_torch: bool = False,
-    **kwargs,
-) -> Tuple[Tuple[float, float], float]:
-    """Calculate Frechet Inception Distance.
-    Please refer to `get_inception_score_and_fid` for the arguments
-    descriptions.
-    Returns:
-        FID: float
-    """
-    acts, = get_inception_feature(
-        images, dims=[2048], use_torch=use_torch, **kwargs)
+        diff = m1 - m2
+        # Run 50 itrs of newton-schulz to get the matrix sqrt of (sigma1 x sigma2)
+        covmean = sqrt_newton_schulz(s1.mm(s2).unsqueeze(0), 50)
+        if torch.any(torch.isnan(covmean)):
+            return float('nan')
+        covmean = covmean.squeeze()
+        fd = (diff.dot(diff) +
+            torch.trace(s1) +
+            torch.trace(s2) -
+            2 * torch.trace(covmean)).cpu().item()
+        return fd
 
-    # Frechet Inception Distance
-    f = np.load(fid_stats_path)
-    mu, sigma = f['mu'][:], f['sigma'][:]
-    f.close()
-    fid = calculate_frechet_inception_distance(acts, mu, sigma, use_torch)
+    def calc_metric(
+        self,
+        train_stats_pth: str = None,
+        test_stats_pth: str = None,
+        use_torch: bool = False,
+        eps: float = 1e-6
+    ) -> float:
 
-    return fid
+        if train_stats_pth is None:
+            m1, s1 = self.calc_stats(self.train_loader, use_torch=use_torch)
+        else:
+            f = np.load(train_stats_pth)
+            m1, s1 = f['mu'][:], f['sigma'][:]
+            f.close()
+
+        if test_stats_pth is None:
+            m2, s2 = self.calc_stats(self.test_loader, use_torch=use_torch)
+        else:
+            f = np.load(test_stats_pth)
+            m2, s2 = f['mu'][:], f['sigma'][:]
+            f.close()
+
+        assert m1.shape == m2.shape, \
+            'Training and test mean vectors have different lengths'
+        assert s1.shape == s2.shape, \
+            'Training and test covariances have different dimensions'
+
+        if use_torch:
+            return self.calc_fd_in_torch(m1, s1, m2, s2)
+        return self.calc_fd_in_np(m1, s1, m2, s2)
