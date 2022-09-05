@@ -9,10 +9,14 @@ from torch.utils.data import DataLoader
 from typing import Union
 from tqdm import tqdm
 
+from .utils import Timer
+
 # Inception weights ported to Pytorch from
 # http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz
-# FID_WEIGHTS_URL = ('https://github.com/w86763777/pytorch-gan-metrics/releases/'
-#                    'download/v0.1.0/pt_inception-2015-12-05-6726825d.pth')
+FID_WEIGHTS_URL = ('https://github.com/w86763777/pytorch-gan-metrics/releases/'
+                   'download/v0.1.0/pt_inception-2015-12-05-6726825d.pth')
+
+# Path to file wit inception weights if it is not possible to load them online
 FID_WEIGHTS_PTH = ('pt_inception-2015-12-05-6726825d.pth')
 
 
@@ -179,14 +183,21 @@ class InceptionV3(nn.Module):
 
     def get_features(
         self,
-        loader: DataLoader,
+        loader: torch.utils.data.DataLoader,
         dim: int,
-        use_torch: bool = False,
         verbose: bool = False,
-        device: torch.device = torch.device('cuda:0'),
+        device: torch.device = torch.device('cuda:0')
     ) -> Union[torch.FloatTensor, np.ndarray]:
         """
-        Description
+        Get Inception Features
+
+        Args:
+            loader: data, you want to get inception features of
+            dim: dimension of inception features
+            verbose: wether to display progress bar
+            device: what model device to use
+        returns:
+            inception model's outout with given dimension
         """
         assert dim in self.BLOCK_INDEX_BY_DIM
         self.output_blocks = [InceptionV3.BLOCK_INDEX_BY_DIM[dim]]
@@ -201,16 +212,10 @@ class InceptionV3(nn.Module):
             for batch in pbar:
                 batch = batch.to(device)
                 output = self.forward(batch)[0].view(-1, dim)
-                if use_torch:
-                    output = output.view(output.shape[0], -1, output.shape[1])
-                else:
-                    output = output.cpu().numpy()
+                output = output.view(output.shape[0], -1, output.shape[1])
                 features.extend(list(output))
 
-        if use_torch:
-            features = torch.cat(features)
-        else:
-            features = np.array(features)
+        features = torch.cat(features)
 
         pbar.close()
         return features
@@ -239,9 +244,11 @@ def fid_inception_v3():
     inception.Mixed_7b = FIDInceptionE_1(1280)
     inception.Mixed_7c = FIDInceptionE_2(2048)
 
+    # # comment if needed
     # state_dict = load_state_dict_from_url(FID_WEIGHTS_URL, progress=True)
     # inception.load_state_dict(state_dict)
 
+    # uncomment if needed
     inception.load_state_dict(torch.load(FID_WEIGHTS_PTH))
 
     return inception
