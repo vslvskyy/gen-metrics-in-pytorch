@@ -1,6 +1,6 @@
 class BaseGanMetric(object):
     """
-    Docstring
+    Base class for GAN's metric calculation
     """
 
     def __init__(self, train_loader):
@@ -14,9 +14,10 @@ class BaseGanMetric(object):
         """
         raise NotImplementedError('calc_metric is not implemented')
 
-class BaseGanMetricComp(BaseGanMetric):
+class BaseGanMetricStats(BaseGanMetric):
     """
-    Docstring
+    Base class for GAN's metric with useage of
+    real world data statistics calculation
     """
 
     def __init__(self, train_loader, test_loader):
@@ -28,5 +29,3 @@ class BaseGanMetricComp(BaseGanMetric):
         Calculates distrubution's statistics
         """
         raise NotImplementedError('get_train_stats is not implemented')
-
-
