@@ -1,7 +1,6 @@
-from gan_metrics.inception_score import get_inception_score
-from gan_metrics.frechet_inception_distance import get_fid
+from gan_metrics_in_pytorch.inception_score import InceptionScore
+from gan_metrics_in_pytorch.frechet_inception_distance import FID
 
 __all__ = [
-    get_inception_score,
-    get_fid
+    InceptionScore, FID
 ]
