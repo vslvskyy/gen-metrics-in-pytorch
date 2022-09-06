@@ -205,6 +205,7 @@ class FID(BaseGanMetricStats):
         train_stats_pth: str = None,
         test_stats_pth: str = None,
         use_torch: bool = False,
+        device: torch.device = torch.device('cuda:0'),
         eps: float = 1e-6
     ) -> Tuple[float, dict]:
         """
@@ -225,21 +226,29 @@ class FID(BaseGanMetricStats):
 
             if train_stats_pth is None:
                 with Timer(time_info, "FID: calc_stats, train"):
-                    m1, s1, calc_stats_time = self.calc_stats(self.train_loader)
+                    m1, s1, calc_stats_time = self.calc_stats(self.train_loader, device=device)
                 time_info.update(calc_stats_time)
             else:
                 f = np.load(train_stats_pth)
                 m1, s1 = f['mu'][:], f['sigma'][:]
                 f.close()
+                if isinstance(m1, type(np.zeros(3))):
+                    m1 = torch.tensor(m1, dtype=torch.float).to(device)
+                if isinstance(s1, type(np.zeros(3))):
+                    s1 = torch.tensor(s1, dtype=torch.float).to(device)
 
             if test_stats_pth is None:
                 with Timer(time_info, "FID: calc_stats, test"):
-                    m2, s2, calc_stats_time = self.calc_stats(self.test_loader)
+                    m2, s2, calc_stats_time = self.calc_stats(self.test_loader, device=device)
                 time_info.update(calc_stats_time)
             else:
                 f = np.load(test_stats_pth)
                 m2, s2 = f['mu'][:], f['sigma'][:]
                 f.close()
+                if isinstance(m2, type(np.zeros(3))):
+                    m2 = torch.tensor(m2, dtype=torch.float).to(device)
+                if isinstance(s2, type(np.zeros(3))):
+                    s2 = torch.tensor(s2, dtype=torch.float).to(device)
 
             assert m1.shape == m2.shape, \
                 'Training and test mean vectors have different lengths'
