@@ -53,7 +53,7 @@ class InceptionV3(nn.Module):
                     - 3: corresponds to output of final average pooling
                     - 4: corresponds to output of softmax
             resize_input : bool
-                If true, bilinearly resizes input to width and height 299
+                If true, bicubically (bilinearly) resizes input to width and height 299
                 before feeding input to model. As the network without fully
                 connected layers is fully convolutional, it should be able to
                 handle inputs of arbitrary size, so resizing might not be
@@ -157,7 +157,8 @@ class InceptionV3(nn.Module):
         if self.resize_input:
             x = F.interpolate(x,
                               size=(299, 299),
-                              mode='bilinear',
+                              mode='bilinear',  # uncomment if needed
+                            #   mode='bicubic',  #comment if needed
                               align_corners=False)
 
         if self.normalize_input:
@@ -244,12 +245,12 @@ def fid_inception_v3():
     inception.Mixed_7b = FIDInceptionE_1(1280)
     inception.Mixed_7c = FIDInceptionE_2(2048)
 
-    # # comment if needed
-    # state_dict = load_state_dict_from_url(FID_WEIGHTS_URL, progress=True)
-    # inception.load_state_dict(state_dict)
+    # comment if needed
+    state_dict = load_state_dict_from_url(FID_WEIGHTS_URL, progress=True)
+    inception.load_state_dict(state_dict)
 
-    # uncomment if needed
-    inception.load_state_dict(torch.load(FID_WEIGHTS_PTH))
+    # # uncomment if needed
+    # inception.load_state_dict(torch.load(FID_WEIGHTS_PTH))
 
     return inception
 
