@@ -18,5 +18,5 @@
 | ------------- | ------------- | -------------- | ------------- | ------------- |
 | pytorch-gan-metrics<br>`use_torch=False` | $60.89$ | $12.82$ | $65.70$ | $$3.52$$ |
 | pytorch-gan-metrics<br>`use_torch=True` | $62.02$ | $12.35$ | $59.62$ | $$10.27$$ |
-| gan-metrics-in-pytorch<br>`use_torch=False` | $$&mdash;$$ | $$&mdash;$$ | $80.61$ | $$24.64$$ |
-| gan-metrics-in-pytorch<br>`use_torch=True` | $62.58$ | $12.56$ | $72.16$ | $$0.66$$ |
+| gan-metrics-in-pytorch<br>`use_torch=False` | $$&mdash;$$ | $$&mdash;$$ | $82.98$ | $$24.64$$ |
+| gan-metrics-in-pytorch<br>`use_torch=True` | $62.58$ | $12.56$ | $59.17$ | $$0.66$$ |
