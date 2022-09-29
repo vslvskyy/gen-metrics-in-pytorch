@@ -5,24 +5,36 @@ from torchvision.datasets import CIFAR10
 from PIL import Image
 import torchvision.transforms as transforms
 
-def resize_single_channel(x_np):
+
+def resize_single_channel(
+        x_np: np.ndarray
+    ):
     img = Image.fromarray(x_np.astype(np.float32), mode='F')
     img = img.resize((299, 299), resample=Image.BICUBIC)
     return np.asarray(img).clip(0, 255).reshape(299, 299, 1)
 
-def clean_fid_transformer_original(img):
+
+def clean_fid_transformer_original(
+        img: Image
+    ):
+
     x = [resize_single_channel(np.asarray(img)[:, :, idx]) for idx in range(3)]
     x = np.concatenate(x, axis=2).astype(np.float32)
     return torch.transpose(torch.from_numpy(x), 0, -1)/255
 
-def clean_fid_transformer(img):
+
+def clean_fid_transformer(
+        img: Image
+    ):
     img = img.resize((299,299), resample=Image.BICUBIC)
     img = transforms.PILToTensor()(img)
     return img.float()/255
 
+
 class MyCifarDataset(CIFAR10):
     def __getitem__(self, idx):
         return super().__getitem__(idx)[0]
+
 
 class Timer:
     def __init__(self, info=None, log_event=None):
