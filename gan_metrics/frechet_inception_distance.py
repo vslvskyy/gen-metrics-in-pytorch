@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Optional
 
 import numpy as np
 import torch
@@ -69,8 +69,8 @@ class FID(BaseGanMetricStats):
 
     def __init__(
         self,
-        train_loader: torch.utils.data.DataLoader,
-        test_loader: torch.utils.data.DataLoader
+        train_loader: Optional[torch.utils.data.DataLoader] = None,
+        test_loader: Optional[torch.utils.data.DataLoader] = None
         ):
         """
         Args:
@@ -79,7 +79,7 @@ class FID(BaseGanMetricStats):
         """
 
         super().__init__(train_loader, test_loader)
-        self.inception_model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]])
+        self.inception_model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]], resize_input=False)
 
     def calc_stats(
         self,
@@ -225,6 +225,7 @@ class FID(BaseGanMetricStats):
         with Timer(time_info, "FID: calc_metric"):
 
             if train_stats_pth is None:
+                assert self.train_loader is not None, "FID.calc_metric: You should provide train_dataloader or path to train data statistics"
                 with Timer(time_info, "FID: calc_stats, train"):
                     m1, s1, calc_stats_time = self.calc_stats(self.train_loader, device=device)
                 time_info.update(calc_stats_time)
@@ -238,6 +239,7 @@ class FID(BaseGanMetricStats):
                     s1 = torch.tensor(s1, dtype=torch.float).to(device)
 
             if test_stats_pth is None:
+                assert self.train_loader is not None, "FID.calc_metric: You should provide test_dataloader or path to test data statistics"
                 with Timer(time_info, "FID: calc_stats, test"):
                     m2, s2, calc_stats_time = self.calc_stats(self.test_loader, device=device)
                 time_info.update(calc_stats_time)
@@ -256,7 +258,8 @@ class FID(BaseGanMetricStats):
                 'Training and test covariances have different dimensions'
 
             if use_torch:
-                fid = self.calc_fd_in_torch(m1, s1, m2, s2, eps)[0]
+                fid = self.calc_fd_in_torch(m1, s1, m2, s2, eps)
+                fid = fid[0]
             else:
                 fid = self.calc_fd_in_np(m1.cpu().numpy(), s1.cpu().numpy(), m2.cpu().numpy(), s2.cpu().numpy(), eps)[0]
 
