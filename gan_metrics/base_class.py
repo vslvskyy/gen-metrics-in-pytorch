@@ -3,10 +3,6 @@ class BaseGanMetric(object):
     Base class for GAN's metric calculation
     """
 
-    def __init__(self, train_loader):
-        self.train_loader = train_loader
-        # self.inception_features = None
-
     def calc_metric(self):
         """
         Computes metric value
@@ -17,12 +13,12 @@ class BaseGanMetric(object):
 class BaseGanMetricStats(BaseGanMetric):
     """
     Base class for GAN's metric with usage of
-    real world data statistics calculation
+    real world data statistics
     """
 
-    def __init__(self, train_loader, test_loader):
-        super().__init__(train_loader)
+    def __init__(self, test_loader):
         self.test_loader = test_loader
+
 
     def get_stats(self):
         """
