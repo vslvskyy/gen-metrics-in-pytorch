@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms as T
 from torchvision import models
 from torch.hub import load_state_dict_from_url
 from torch.utils.data import DataLoader
@@ -10,6 +11,8 @@ from typing import Union
 from tqdm import tqdm
 
 from .utils import Timer
+
+from gan_metrics_in_pytorch.utils import clean_fid_transformer
 
 # Inception weights ported to Pytorch from
 # http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz
@@ -185,6 +188,7 @@ class InceptionV3(nn.Module):
         self,
         loader: torch.utils.data.DataLoader,
         dim: int,
+        is_clean_fid: bool = False,
         verbose: bool = False,
         device: torch.device = torch.device('cuda:0')
     ) -> Union[torch.FloatTensor, np.ndarray]:
@@ -197,7 +201,7 @@ class InceptionV3(nn.Module):
             verbose: wether to display progress bar
             device: what model device to use
         returns:
-            inception model's outout with given dimension
+            inception model's output with given dimension
         """
         assert dim in self.BLOCK_INDEX_BY_DIM
         self.output_blocks = [InceptionV3.BLOCK_INDEX_BY_DIM[dim]]
@@ -210,6 +214,15 @@ class InceptionV3(nn.Module):
         pbar = tqdm(loader, disable=not verbose, desc="get_features")
         with torch.no_grad():
             for batch in pbar:
+
+                if is_clean_fid:
+                    lst = []
+                    for i in range(batch.size()[0]):
+
+                        img = clean_fid_transformer(T.ToPILImage()(batch[i,:,:,:]))
+                        lst.append(img.view(1, *img.size()))
+                    batch = torch.cat(lst)
+
                 batch = batch.to(device)
                 output = self.forward(batch)[0].view(-1, dim)
                 output = output.view(output.shape[0], -1, output.shape[1])
