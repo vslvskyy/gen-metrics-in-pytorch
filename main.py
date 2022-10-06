@@ -21,7 +21,7 @@ def run(args):
     if args.train_stats_pth is not None:
         train_data = args.train_stats_pth
 
-    if args.test_data_pth:
+    if args.test_data_pth is not None:
         test_dataset = ImageDataset(root=args.test_data_pth, exts=['png'], transform=transformer)
         # test_dataset = MyCifarDataset("./", download=False, train=False, transform=transformer)
         test_data = DataLoader(test_dataset, batch_size=50, num_workers=2)
