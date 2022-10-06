@@ -69,9 +69,7 @@ class FID(BaseGanMetricStats):
 
     def __init__(
             self,
-            test_loader: Optional[torch.utils.data.DataLoader] = None,
-            test_stats_pth: str = None,
-            is_clean_fid: bool = False,
+            test_data: Union[torch.utils.data.DataLoader, str],
             use_torch: bool = False,
             device: torch.device = torch.device('cuda:0'),
             eps: float = 1e-6
@@ -85,12 +83,8 @@ class FID(BaseGanMetricStats):
             device: what model device to use
             eps: prevent covmean from being singular matrix
         """
-        assert test_loader is not None or test_stats_pth is not None, \
-            "FID(init): provide test_dataloader or path to test data statistics"
-        super().__init__(test_loader)
-        self.test_stats_pth = test_stats_pth
-        self.is_clean_fid = is_clean_fid
-        self.inception_model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]], resize_input=not self.is_clean_fid)
+        super().__init__(test_data)
+        self.inception_model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]], resize_input=True)
         self.use_torch = use_torch
         self.device = device
         self.eps = eps
@@ -117,7 +111,7 @@ class FID(BaseGanMetricStats):
         time_info = {}
         with Timer(time_info, "FID: calc_stats"):
             with Timer(time_info, "InceptionV3: get_features"):
-                acts = self.inception_model.get_features(loader, is_clean_fid=self.is_clean_fid, dim=2048, device=device)
+                acts = self.inception_model.get_features(loader, dim=2048, device=device)
             mu = torch.mean(acts, axis=0)
             sigma = torch_cov(acts)
         return mu, sigma, time_info
@@ -211,8 +205,9 @@ class FID(BaseGanMetricStats):
 
     def calc_metric(
             self,
-            train_loader: Optional[torch.utils.data.DataLoader] = None,
+            train_data: Union[torch.utils.data.DataLoader, str],
             train_stats_pth: str = None
+
         ) -> Tuple[float, dict]:
         """
         Calculates Frechet Inception Distance betweet two datasets
@@ -224,6 +219,15 @@ class FID(BaseGanMetricStats):
             frechet inception distance
             dictionary with time information
         """
+        if isinstance(train_data, torch.utils.data.DataLoader):
+            train_loader = train_data
+            train_stats_pth = None
+        elif isinstance(train_data, str):
+            train_loader = None
+            train_stats_pth = train_data
+        else:
+            raise TypeError
+
         time_info = {}
         with Timer(time_info, "FID: calc_metric"):
 
