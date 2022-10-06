@@ -19,8 +19,8 @@ from gan_metrics_in_pytorch.utils import clean_fid_transformer
 FID_WEIGHTS_URL = ('https://github.com/w86763777/pytorch-gan-metrics/releases/'
                    'download/v0.1.0/pt_inception-2015-12-05-6726825d.pth')
 
-# Path to file wit inception weights if it is not possible to load them online
-FID_WEIGHTS_PTH = ('pt_inception-2015-12-05-6726825d.pth')
+# Path to file with inception weights if it is not possible to load them online
+FID_WEIGHTS_PTH = ('./paths_to_smth/inceptionV3weights.pth')
 
 
 class InceptionV3(nn.Module):
@@ -188,7 +188,6 @@ class InceptionV3(nn.Module):
         self,
         loader: torch.utils.data.DataLoader,
         dim: int,
-        is_clean_fid: bool = False,
         verbose: bool = False,
         device: torch.device = torch.device('cuda:0')
     ) -> Union[torch.FloatTensor, np.ndarray]:
@@ -214,15 +213,6 @@ class InceptionV3(nn.Module):
         pbar = tqdm(loader, disable=not verbose, desc="get_features")
         with torch.no_grad():
             for batch in pbar:
-
-                if is_clean_fid:
-                    lst = []
-                    for i in range(batch.size()[0]):
-
-                        img = clean_fid_transformer(T.ToPILImage()(batch[i,:,:,:]))
-                        lst.append(img.view(1, *img.size()))
-                    batch = torch.cat(lst)
-
                 batch = batch.to(device)
                 output = self.forward(batch)[0].view(-1, dim)
                 output = output.view(output.shape[0], -1, output.shape[1])
