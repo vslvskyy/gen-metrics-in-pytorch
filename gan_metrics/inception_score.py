@@ -59,8 +59,7 @@ class InceptionScore(BaseGanMetric):
 
     def calc_metric(
             self,
-            loader: Optional[torch.utils.data.DataLoader] = None,
-            probs_pth: Optional[Union[torch.FloatTensor, np.ndarray]] = None
+            data: Union[torch.utils.data.DataLoader, str]
         ) -> Tuple[float, float, dict]:
         """
         Inception Score calculation
@@ -72,8 +71,14 @@ class InceptionScore(BaseGanMetric):
             mean and standard deviation of batchs' IS
             dictionary with time information
         """
-        assert loader is not None or probs_pth is not None, \
-            "InceptionScore.calc_metric: provide dataloader or path (generated) data conditional probabilities of classes"
+        if isinstance(data, torch.utils.data.DataLoader):
+            loader = data
+            probs_pth = None
+        elif isinstance(str):
+            loader = None
+            probs_pth = data
+        else:
+            raise TypeError
 
         time_info = {}
         with Timer(time_info, "InceptionScore: calc_metric"):
