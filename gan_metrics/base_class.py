@@ -1,3 +1,7 @@
+import torch
+
+from typing import Union
+
 class BaseGanMetric(object):
     """
     Base class for GAN's metric calculation
@@ -16,8 +20,15 @@ class BaseGanMetricStats(BaseGanMetric):
     real world data statistics
     """
 
-    def __init__(self, test_loader):
-        self.test_loader = test_loader
+    def __init__(self, test_data: Union[torch.utils.data.DataLoader, str]):
+        if isinstance(test_data, torch.utils.data.DataLoader):
+            self.test_loader = test_data
+            self.test_stats_pth = None
+        elif isinstance(test_data, str):
+            self.test_loader = None
+            self.test_stats_pth = test_data
+        else:
+            raise TypeError
 
 
     def get_stats(self):
