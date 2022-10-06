@@ -5,6 +5,13 @@ from torchvision.datasets import CIFAR10
 from PIL import Image
 import torchvision.transforms as transforms
 
+import os
+from typing import List, Union, Tuple, Optional
+from glob import glob
+
+from torch.utils.data import Dataset
+from torchvision.transforms.functional import to_tensor
+
 
 def resize_single_channel(
         x_np: np.ndarray
@@ -34,6 +41,48 @@ def clean_fid_transformer(
 class MyCifarDataset(CIFAR10):
     def __getitem__(self, idx):
         return super().__getitem__(idx)[0]
+
+
+def make_dataset(data: str, root: str= None, exts: str = None):
+    if data.lower() == "cifar10":
+        return MyCifarDataset(CIFAR10)
+    return ImageDataset(root, exts)
+
+
+class ImageDataset(Dataset):
+    """A simple image dataset for calculating inception score and FID."""
+
+    def __init__(self, root, exts=['png', 'jpg', 'JPEG'], transform=None,
+                 num_images=None):
+        """Construct an image dataset.
+        Args:
+            root: Path to the image directory. This directory will be
+                  recursively searched.
+            exts: List of extensions to search for.
+            transform: A torchvision transform to apply to the images. If
+                       None, the images will be converted to tensors.
+            num_images: The number of images to load. If None, all images
+                        will be loaded.
+        """
+        self.paths = []
+        self.transform = transform
+        for ext in exts:
+            self.paths.extend(
+                list(glob(
+                    os.path.join(root, f'*.%s' % ext), recursive=True)))
+        self.paths = self.paths[:num_images]
+
+    def __len__(self):              # noqa
+        return len(self.paths)
+
+    def __getitem__(self, idx):     # noqa
+        image = Image.open(self.paths[idx])
+        image = image.convert('RGB')        # fix ImageNet grayscale images
+        if self.transform is not None:
+            image = self.transform(image)
+        else:
+            image = to_tensor(image)
+        return image
 
 
 class Timer:
