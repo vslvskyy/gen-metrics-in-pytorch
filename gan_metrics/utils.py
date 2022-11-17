@@ -1,59 +1,98 @@
+import functools
+import os
+from glob import glob
+from typing import List, Optional, Callable
+from PIL import Image
+
 import torch
-import numpy as np
+import torch.nn.functional as F
 
 from torchvision.datasets import CIFAR10
-from PIL import Image
-import torchvision.transforms as transforms
-
-import os
-from typing import List, Union, Tuple, Optional
-from glob import glob
-
+from torchvision import transforms as T
 from torch.utils.data import Dataset
-from torchvision.transforms.functional import to_tensor
 
 
-def resize_single_channel(
-        x_np: np.ndarray
-    ):
-    img = Image.fromarray(x_np.astype(np.float32), mode='F')
-    img = img.resize((299, 299), resample=Image.BICUBIC)
-    return np.asarray(img).clip(0, 255).reshape(299, 299, 1)
-
-
-def clean_fid_transformer_original(
+def base_transformer(
         img: Image
     ):
-
-    x = [resize_single_channel(np.asarray(img)[:, :, idx]) for idx in range(3)]
-    x = np.concatenate(x, axis=2).astype(np.float32)
-    return torch.transpose(torch.from_numpy(x), 0, -1)/255
+    tnsr = T.ToTensor()(img).unsqueeze(0)
+    tnsr = F.interpolate(
+        tnsr,
+        size=(299, 299),
+        mode='bilinear',
+        align_corners=False
+    )
+    return tnsr.squeeze()
 
 
 def clean_fid_transformer(
         img: Image
     ):
-    img = img.resize((299,299), resample=Image.BICUBIC)
-    img = transforms.PILToTensor()(img)
-    return img.float()/255
+    img = img.resize((299, 299), resample=Image.BICUBIC)
+    img = T.PILToTensor()(img)
+    return img.float() / 255
 
 
+class Registry():
+    def __init__(self):
+        self.registry_dct = {
+            "metrics": {},
+            "data_types": {}
+        }
+
+    def fill_dct(self, key: str, is_metric: bool = False):
+
+        def wraps(func):
+
+            if is_metric:
+                self.registry_dct["metrics"][key] = func
+            else:
+                self.registry_dct["data_types"][key] = func
+
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                return func(*args, **kwargs)
+
+            return wrapper
+
+        return wraps
+
+reg_obj = Registry()
+
+
+@reg_obj.fill_dct("StandardDataset")
 class MyCifarDataset(CIFAR10):
+    def __init__(
+        self,
+        root: str,
+        transform: Optional[Callable],
+        train: bool = True,
+        download: bool = True,
+        **kwargs
+    ):
+        super().__init__(
+            root="./",
+            train=train,
+            transform=transform,
+            download=download
+        )
+
     def __getitem__(self, idx):
         return super().__getitem__(idx)[0]
 
 
-def make_dataset(data: str, root: str= None, exts: str = None):
-    if data.lower() == "cifar10":
-        return MyCifarDataset(CIFAR10)
-    return ImageDataset(root, exts)
-
-
+@reg_obj.fill_dct("ImageDataset")
 class ImageDataset(Dataset):
     """A simple image dataset for calculating inception score and FID."""
 
-    def __init__(self, root, exts=['png', 'jpg', 'JPEG'], transform=None,
-                 num_images=None):
+    def __init__(
+        self,
+        root: str,
+        transform  = None,
+        num_images = None,
+        exts: List[str] = ['png', 'jpg', 'JPEG'],
+        **kwargs
+    ):
         """Construct an image dataset.
         Args:
             root: Path to the image directory. This directory will be
@@ -65,24 +104,30 @@ class ImageDataset(Dataset):
                         will be loaded.
         """
         self.paths = []
-        self.transform = transform
+
         for ext in exts:
             self.paths.extend(
                 list(glob(
-                    os.path.join(root, f'*.%s' % ext), recursive=True)))
+                    os.path.join(root, '*.%s' % ext), recursive=True)))
+
         self.paths = self.paths[:num_images]
+        self.images = [Image.open(path).convert("RGB") for path in self.paths]
+
+        self.transform = transform if transform is not None else T.ToTensor()
 
     def __len__(self):              # noqa
         return len(self.paths)
 
     def __getitem__(self, idx):     # noqa
-        image = Image.open(self.paths[idx])
-        image = image.convert('RGB')        # fix ImageNet grayscale images
-        if self.transform is not None:
-            image = self.transform(image)
-        else:
-            image = to_tensor(image)
-        return image
+        return self.transform(self.images[idx])
+
+
+@reg_obj.fill_dct("stats")
+def stats_type(
+    root: str,
+    **kwargs
+):
+    return root
 
 
 class Timer:
