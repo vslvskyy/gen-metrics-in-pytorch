@@ -7,9 +7,10 @@ from torch.utils.data import DataLoader
 
 from .base_class import BaseGanMetric
 from .inception_net import InceptionV3
-from .utils import Timer
+from .utils import Timer, reg_obj
 
 
+@reg_obj.fill_dct("IS", True)
 class InceptionScore(BaseGanMetric):
     """
     Class for Inception Score calculation
@@ -18,7 +19,8 @@ class InceptionScore(BaseGanMetric):
     def __init__(
             self,
             device = torch.device('cuda:0'),
-            splits_n: int = 10
+            splits_n: int = 10,
+            **kwargs
         ):
         """
         Args:
@@ -28,7 +30,7 @@ class InceptionScore(BaseGanMetric):
 
         self.device = device
         self.splits_n = splits_n
-        self.inception_model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[1008]])
+        self.inception_model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[1008]] , resize_input=False)
 
 
     def calc_is(
@@ -59,7 +61,7 @@ class InceptionScore(BaseGanMetric):
 
     def calc_metric(
             self,
-            data: Union[torch.utils.data.DataLoader, str]
+            generated_data: Union[DataLoader, str]
         ) -> Tuple[float, float, dict]:
         """
         Inception Score calculation
@@ -71,14 +73,14 @@ class InceptionScore(BaseGanMetric):
             mean and standard deviation of batchs' IS
             dictionary with time information
         """
-        if isinstance(data, torch.utils.data.DataLoader):
-            loader = data
+        if isinstance(generated_data, DataLoader):
+            loader = generated_data
             probs_pth = None
         elif isinstance(str):
             loader = None
-            probs_pth = data
+            probs_pth = generated_data
         else:
-            raise TypeError
+            raise TypeError("InceptionScore.calc_metric: generated_data should be DataLoader or str")
 
         time_info = {}
         with Timer(time_info, "InceptionScore: calc_metric"):
