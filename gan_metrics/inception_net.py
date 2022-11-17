@@ -2,17 +2,13 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import transforms as T
+
 from torchvision import models
 from torch.hub import load_state_dict_from_url
 from torch.utils.data import DataLoader
 
 from typing import Union
 from tqdm import tqdm
-
-from .utils import Timer
-
-from gan_metrics_in_pytorch.utils import clean_fid_transformer
 
 # Inception weights ported to Pytorch from
 # http://download.tensorflow.org/models/image/imagenet/inception-2015-12-05.tgz
@@ -186,7 +182,7 @@ class InceptionV3(nn.Module):
 
     def get_features(
         self,
-        loader: torch.utils.data.DataLoader,
+        loader: DataLoader,
         dim: int,
         verbose: bool = False,
         device: torch.device = torch.device('cuda:0')
