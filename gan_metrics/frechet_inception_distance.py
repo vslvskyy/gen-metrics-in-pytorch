@@ -1,14 +1,14 @@
-from typing import List, Union, Tuple, Optional
+from typing import Union, Tuple
 
 import numpy as np
 import torch
 from scipy import linalg
-from tqdm import tqdm
 from torch.utils.data import DataLoader
 
 from .base_class import BaseGanMetricStats
 from .inception_net import InceptionV3
-from .utils import Timer
+from .utils import Timer, reg_obj
+
 
 def torch_cov(m, rowvar=False):
     """
@@ -29,7 +29,7 @@ def torch_cov(m, rowvar=False):
         The covariance matrix of the variables.
     """
     if m.dim() > 2:
-        raise ValueError('m has more than 2 dimensions')
+        raise ValueError("m has more than 2 dimensions")
     if m.dim() < 2:
         m = m.view(1, -1)
     if not rowvar and m.size(0) != 1:
@@ -62,6 +62,7 @@ def sqrt_newton_schulz(A, numIters, dtype=None):
     return sA
 
 
+@reg_obj.fill_dct("FID", True)
 class FID(BaseGanMetricStats):
     """
     Class for Frechet Inception Distance calculation
@@ -69,30 +70,29 @@ class FID(BaseGanMetricStats):
 
     def __init__(
             self,
-            test_data: Union[torch.utils.data.DataLoader, str],
+            real_data: Union[DataLoader, str],
             use_torch: bool = False,
             device: torch.device = torch.device('cuda:0'),
-            eps: float = 1e-6
+            eps: float = 1e-6,
+            **kwargs
         ):
         """
         Args:
-            test_loader: real world data
-            test_stats_pth: path to real world data statistics
+            real_data: real world data
             is_clean_fid: whether to use clean-fid preprocessing
             use_torch: whether to use pytorch or numpy for frechet distance calculation
             device: what model device to use
             eps: prevent covmean from being singular matrix
         """
-        super().__init__(test_data)
-        self.inception_model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]], resize_input=True)
+        super().__init__(real_data)
+        self.inception_model = InceptionV3([InceptionV3.BLOCK_INDEX_BY_DIM[2048]], resize_input=False)
         self.use_torch = use_torch
         self.device = device
         self.eps = eps
 
     def calc_stats(
             self,
-            loader: torch.utils.data.DataLoader,
-            batch_size: int=50,
+            loader: DataLoader,
             device: torch.device = torch.device('cuda:0')
         ) -> Tuple[torch.FloatTensor, torch.FloatTensor, dict]:
         """
@@ -124,7 +124,7 @@ class FID(BaseGanMetricStats):
             s2: np.ndarray
         ) -> Tuple[float, dict]:
         """
-        Calculates Frechet DIstance betweet two distributions
+        Calculates Frechet Distance betweet two distributions
 
         Args:
             m1: mean of first distribution
@@ -158,7 +158,7 @@ class FID(BaseGanMetricStats):
             if np.iscomplexobj(covmean):
                 if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
                     m = np.max(np.abs(covmean.imag))
-                    raise ValueError('Imaginary component {}'.format(m))
+                    raise ValueError("Imaginary component {}".format(m))
                 covmean = covmean.real
 
             tr_covmean = np.trace(covmean)
@@ -177,7 +177,7 @@ class FID(BaseGanMetricStats):
             s2: torch.Tensor
         ) -> Tuple[float, dict]:
         """
-        Calculates Frechet DIstance betweet two distributions
+        Calculates Frechet Distance betweet two distributions
 
         Args:
             m1: mean of first distribution
@@ -195,7 +195,7 @@ class FID(BaseGanMetricStats):
             # Run 50 itrs of newton-schulz to get the matrix sqrt of (sigma1 x sigma2)
             covmean = sqrt_newton_schulz(s1.mm(s2).unsqueeze(0), 50)
             if torch.any(torch.isnan(covmean)):
-                return float('nan')
+                return float('nan'), time_info
             covmean = covmean.squeeze()
             fd = (diff.dot(diff) +
                 torch.trace(s1) +
@@ -205,41 +205,36 @@ class FID(BaseGanMetricStats):
 
     def calc_metric(
             self,
-            train_data: Union[torch.utils.data.DataLoader, str],
-            train_stats_pth: str = None
-
+            generated_data: Union[DataLoader, str]
         ) -> Tuple[float, dict]:
         """
         Calculates Frechet Inception Distance betweet two datasets
 
         Args:
-            train_loader: generated data
-            train_stats_pth: path to generated data statistics
+            generated_data: generated data
         returns:
             frechet inception distance
             dictionary with time information
         """
-        if isinstance(train_data, torch.utils.data.DataLoader):
-            train_loader = train_data
-            train_stats_pth = None
-        elif isinstance(train_data, str):
-            train_loader = None
-            train_stats_pth = train_data
+        if isinstance(generated_data, DataLoader):
+            generated_data_loader = generated_data
+            generated_data_stats_pth = None
+        elif isinstance(generated_data, str):
+            generated_data_loader = None
+            generated_data_stats_pth = generated_data
         else:
-            raise TypeError
+            raise TypeError("FID.calc_metric: generated_data should be DataLoader or str")
 
         time_info = {}
         with Timer(time_info, "FID: calc_metric"):
 
-            if train_stats_pth is None:
-                assert train_loader is not None, \
-                    "FID.calc_metric: provide train_dataloader or path to train data statistics"
-
-                with Timer(time_info, "FID: calc_stats, train"):
-                    m1, s1, calc_stats_time = self.calc_stats(train_loader, device=self.device)
+            if generated_data_stats_pth is None:
+                with Timer(time_info, "FID: calc_stats, generated data"):
+                    m1, s1, calc_stats_time = self.calc_stats(generated_data_loader, device=self.device)
                 time_info.update(calc_stats_time)
+
             else:
-                f = np.load(train_stats_pth)
+                f = np.load(generated_data_stats_pth)
                 m1, s1 = f['mu'][:], f['sigma'][:]
                 f.close()
                 if isinstance(m1, type(np.zeros(3))):
@@ -247,15 +242,13 @@ class FID(BaseGanMetricStats):
                 if isinstance(s1, type(np.zeros(3))):
                     s1 = torch.tensor(s1, dtype=torch.float).to(self.device)
 
-            if self.test_stats_pth is None:
-                assert self.test_loader is not None, \
-                    "FID.calc_metric: provide test_dataloader or path to test data statistics"
-
-                with Timer(time_info, "FID: calc_stats, test"):
-                    m2, s2, calc_stats_time = self.calc_stats(self.test_loader, device=self.device)
+            if self.real_data_stats_pth is None:
+                with Timer(time_info, "FID: calc_stats, real data"):
+                    m2, s2, calc_stats_time = self.calc_stats(self.real_data_loader, device=self.device)
                 time_info.update(calc_stats_time)
+
             else:
-                f = np.load(self.test_stats_pth)
+                f = np.load(self.real_data_stats_pth)
                 m2, s2 = f['mu'][:], f['sigma'][:]
                 f.close()
                 if isinstance(m2, type(np.zeros(3))):
@@ -264,9 +257,9 @@ class FID(BaseGanMetricStats):
                     s2 = torch.tensor(s2, dtype=torch.float).to(self.device)
 
             assert m1.shape == m2.shape, \
-                'FID.calc_metric: training and test mean vectors have different lengths'
+                'FID.calc_metric: generated and real mean vectors have different lengths'
             assert s1.shape == s2.shape, \
-                'FID.calc_metric: training and test covariances have different dimensions'
+                'FID.calc_metric: generated and real covariances have different dimensions'
 
             if self.use_torch:
                 fid = self.calc_fd_in_torch(m1, s1, m2, s2)[0]
