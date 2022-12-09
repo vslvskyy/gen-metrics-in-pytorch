@@ -2,6 +2,11 @@ from typing import Union
 
 from torch.utils.data import DataLoader
 
+from .utils import Registry
+
+
+metrics = Registry()
+
 
 class BaseGanMetric(object):
     """

@@ -1,16 +1,15 @@
-from typing import Tuple, Optional, Union
+from typing import Tuple, Union
 
-import numpy as np
 import torch
-from tqdm import tqdm
+import numpy as np
 from torch.utils.data import DataLoader
 
-from .base_class import BaseGanMetric
+from .base_class import BaseGanMetric, metrics
 from .inception_net import InceptionV3
-from .utils import Timer, reg_obj
+from .utils import Timer
 
 
-@reg_obj.fill_dct("IS", True)
+@metrics.fill_dct("IS")
 class InceptionScore(BaseGanMetric):
     """
     Class for Inception Score calculation
