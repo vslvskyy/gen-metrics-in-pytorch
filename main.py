@@ -1,50 +1,57 @@
 import argparse
+from typing import Dict
 
 from torch.utils.data import DataLoader, Dataset
 
-from gan_metrics_in_pytorch.utils import (
-    clean_fid_transformer,
+from gan_metrics.base_class import metrics
+from gan_metrics.utils import (
     base_transformer,
-    reg_obj
+    clean_fid_transformer,
+    datasets,
+    Timer
 )
 
 
 def run(args):
-    print(args)
+    time_info: Dict[str, float] = {}
+    with Timer(time_info, "main"):
+        print(args)
 
-    transformer = clean_fid_transformer if args.clean_fid else base_transformer
+        transformer = clean_fid_transformer if args.clean_fid else base_transformer
 
-    generated_dataset = reg_obj.registry_dct["data_types"][args.generated_data_type](
-        root=args.generated_data_pth,
-        transform=transformer,
-        train=True,
-        download=False
-    )
-    if isinstance(generated_dataset, Dataset):
-        generated_data = DataLoader(generated_dataset, batch_size=50, num_workers=2)
-    else:
-        generated_data = generated_dataset
-
-    real_data = None
-    if args.real_data_pth is not None:
-        real_dataset = reg_obj.registry_dct["data_types"][args.real_data_type](
-            root=args.real_data_pth,
+        generated_dataset = datasets[args.generated_data_type](
+            root=args.generated_data_pth,
             transform=transformer,
-            train=False,
+            train=True,
             download=False
         )
-        if isinstance(real_dataset, Dataset):
-            real_data = DataLoader(real_dataset, batch_size=50, num_workers=2)
+        if isinstance(generated_dataset, Dataset):
+            generated_data = DataLoader(generated_dataset, batch_size=50, num_workers=2)
         else:
-            real_data = real_dataset
+            generated_data = generated_dataset
 
-    metric = reg_obj.registry_dct["metrics"][args.metric](
-        real_data=real_data,
-        use_torch=args.use_torch
-    )
+        real_data = None
+        if args.real_data_pth is not None:
+            real_dataset = datasets[args.real_data_type](
+                root=args.real_data_pth,
+                transform=transformer,
+                train=False,
+                download=False
+            )
+            if isinstance(real_dataset, Dataset):
+                real_data = DataLoader(real_dataset, batch_size=50, num_workers=2)
+            else:
+                real_data = real_dataset
 
-    result = metric.calc_metric(generated_data)
-    print(result)
+        metric = metrics[args.metric](
+            real_data=real_data,
+            use_torch=args.use_torch
+        )
+
+        result = metric.calc_metric(generated_data)
+        print(result)
+
+    print(f"required time: {time_info['duration/main']}")
 
 
 if __name__ == "__main__":
@@ -64,9 +71,9 @@ if __name__ == "__main__":
                         help='path to real data (images or precalculated statistics)')
 
     parser.add_argument('--clean_fid', action='store_true', required=False,
-                    help='using clean fid preprocessing')
+                        help='using clean fid preprocessing')
 
     parser.add_argument('--use_torch', action='store_true', required=False,
-                    help='using pytorch as the matrix operations backend')
+                        help='using pytorch as the matrix operations backend')
 
     run(parser.parse_args())
