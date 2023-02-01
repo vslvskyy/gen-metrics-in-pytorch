@@ -27,11 +27,11 @@ Models were taken from https://github.com/w86763777/pytorch-gan-collections.
 
 The FID is calculated by 50k generated images and CIFAR10 train set.
 
-| Model | IS | FID |
-| ------------- | ------------- | ------------- |
-| DCGAN | $5.98 \pm 0.08$ | $47.33$ |
-| WGAN(CNN) | $6.46 \pm 0.06$ | $38.53$ |
-| WGAN-GP(CNN) | $7.72 \pm 0.08$ | $18.74$ |
-| WGAN-GP(ResNet) | $7.81 \pm 0.08$ | $16.75$ |
-| SNGAN(CNN) | $7.64 \pm 0.05$ | $18.30$ |
-| SNGAN(ResNet) | $8.20 \pm 0.12$ | $14.68$ |
+| Model | IS | FID | Clean FID |
+| ------------- | ------------- | ------------- | ------------- |
+| DCGAN | $5.98 \pm 0.08$ | $47.33$ | $58.71$ |
+| WGAN(CNN) | $6.46 \pm 0.06$ | $38.53$ | $45.80$ |
+| WGAN-GP(CNN) | $7.72 \pm 0.08$ | $18.74$ | $24.75$ |
+| WGAN-GP(ResNet) | $7.81 \pm 0.08$ | $16.75$ | $21.03$ |
+| SNGAN(CNN) | $7.64 \pm 0.05$ | $18.30$ | $23.29$ |
+| SNGAN(ResNet) | $8.20 \pm 0.12$ | $14.68$ | $18.76$ |
