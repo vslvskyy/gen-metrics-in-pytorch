@@ -23,7 +23,7 @@
 
 ## Metric values for different GAN's (CIFAR10)
 
-Models were taken from [pytorch-gan-collections]([url](https://github.com/w86763777/pytorch-gan-collections)).
+Models were taken from [pytorch-gan-collections](https://github.com/w86763777/pytorch-gan-collections).
 
 The FID is calculated by 50k generated images and CIFAR10.
 
