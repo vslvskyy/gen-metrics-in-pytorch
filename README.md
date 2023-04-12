@@ -41,7 +41,7 @@ You can also compute Clean-FID, proposed in [On Aliased Resizing and Surprising 
 
 The metric compares manifolds of real and generated Inception Model features.
 
-Firstly, approximations of given manifolds are created. Each approximation is the union of a hyperspheres with radius equal to the distance to object's k-th nearest neighbor.
+Firstly, approximations of given manifolds are created. Each approximation is the union of hyperspheres with radius equal to the distance to object's k-th nearest neighbor.
 
 ![image](https://user-images.githubusercontent.com/75453192/231453057-9eef5c85-de12-42e6-b266-32005db634e8.png)
 
