@@ -31,11 +31,25 @@ FID calculates Frechet Distance between distributions of real and generated feat
 
 $$\text{FID}(G) = \|\mu_g - \mu_r\|^2_2 + \text{tr}(\Sigma_g + \Sigma_r - 2 (\Sigma_g\Sigma_r)^{\frac12})$$
 
-$\mu, \Sigma$ - mean vector and covariance matrix of generated or real distribution.
+$\mu, \Sigma$ - mean vector and covariance matrix of generated or real features distribution.
+
+You can also compute Clean-FID, proposed in [On Aliased Resizing and Surprising Subtleties in GAN Evaluation](https://arxiv.org/pdf/2104.11222.pdf). It uses another image preprocessing pipeline and bicubic filter for image reconstruction.
 
 ### Imporoved Precision and Recall for Distributions
 
 [Improved Precision and Recall Metric for Assessing Generative Models](https://arxiv.org/pdf/1904.06991.pdf)
+
+The metric compares manifolds of real and generated Inception Model features.
+
+Firstly, approximations of given manifolds are created. Each approximation is the union of a hyperspheres with radius equal to the distance to object's k-th nearest neighbor.
+
+![image](https://user-images.githubusercontent.com/75453192/231453057-9eef5c85-de12-42e6-b266-32005db634e8.png)
+
+Secondly, using manifold's approximation we can determine if an object belongs to a manifold, so we can compute precision and recall as fraction of generated samples, which belogn to real manifold, and fraction of real objects, which belong to generated distribution, respectively.
+
+$$f(\phi, \Phi) := \text{I}[\exists \phi{'}: \|\phi - \phi{'}\|_2 \leq \|\phi{'} - \text{NN}_k(\phi{'}, \Phi)\|_2]$$
+
+$$\text{precision}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_g|}\sum\limits_{\phi_g \in \Phi_g}f(\phi_g, \Phi_r) \space\space\space \text{recall}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_r|}\sum\limits_{\phi_r \in \Phi_r}f(\phi_r, \Phi_g)$$
 
 ## Reproducing Results of pytorch-gan-metrics on CIFAR-10
 
