@@ -1,7 +1,45 @@
-# Standard GAN Metrics in Pytorch
+# Standard GAN Metrics Pytorch Implementation
 
+Welcome to our GitHub repository that contains the implementation of several metrics for evaluating generative models! Our goal is to provide a user-friendly and efficient way for researchers and developers to evaluate the performance of their generative models. By using these metrics, you can get a better understanding of how well your generative model is performing and identify areas for improvement. We hope that our implementation will be a valuable resource for those looking to develop and evaluate generative models.
 
-## Reproducing Results of Pytorch-gan-metrics on CIFAR-10
+## Implemented metrics
+
+The repository contains implementations of the following metrics:
+
+- Inception Score
+- Frechet Inception Distance
+- Improved Precision and Recall for Distributions
+
+### Inception Score
+
+[Improved Techniques for Training GANs](https://arxiv.org/pdf/1606.03498.pdf) (Section 4. Assessment of image quality)
+
+The main component of IS is an Inception model, which is a pre-trained classifier. 
+
+Inception Model returns conditional probability p(y|x) (y - class label, x - input image), this probability has **low entropy** if x is realistic. 
+Besides, generative model should produce various images, so p(y) should have **high entropy**. It turns out that the distributions should be far from each other.
+
+$$\text{IS}(G) = \exp(\mathbb{E}_{x\sim p_g}D_{KL}(p(y|x)\|p(y)))$$
+
+Inception Score reflects KL-Divergence between p(y|x) and p(y), so it should be maximized.
+
+### Frechet Inception Distance
+
+[GANs Trained by a Two Time-Scale Update Rule Converge to a Local Nash Equilibrium](https://arxiv.org/pdf/1706.08500.pdf) (Section Experiments.Performance Measure)
+
+FID calculates Frechet Distance between distributions of real and generated features from Inception Model. 
+
+$$\text{FID}(G) = \|\mu_g - \mu_r\|^2_2 + \text{tr}(\Sigma_g + \Sigma_r - 2 (\Sigma_g\Sigma_r)^{\frac12})$$
+
+$\mu, \Sigma$ - mean vector and covariance matrix of generated or real distribution.
+
+### Imporoved Precision and Recall for Distributions
+
+[Improved Precision and Recall Metric for Assessing Generative Models](https://arxiv.org/pdf/1904.06991.pdf)
+
+## Reproducing Results of pytorch-gan-metrics on CIFAR-10
+
+[pytorch-gan-metrics](https://github.com/w86763777/pytorch-gan-metrics)
 
 ### Values
 
