@@ -73,7 +73,7 @@ $$\text{precision}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_g|}\sum\limits_{\phi_g \in 
 | gan-metrics-in-pytorch<br>`use_torch=False` | $$&mdash;$$ | $$&mdash;$$ | $82.98$ | $$24.64$$ | $$186.28$$ |
 | gan-metrics-in-pytorch<br>`use_torch=True` | $62.58$ | $12.56$ | $59.17$ | $$0.66$$ | $$132.24$$ |
 
-## Metric values for different GAN's (CIFAR10)
+## Metric values for different GANs (CIFAR10)
 
 Models were taken from [pytorch-gan-collections](https://github.com/w86763777/pytorch-gan-collections).
 
