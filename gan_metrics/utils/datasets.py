@@ -20,9 +20,9 @@ class ImageDataset(Dataset):
     def __init__(
         self,
         root: str,
-        transform  = None,
-        num_images = None,
-        exts: List[str] = ['png', 'jpg', 'JPEG'],
+        transform=None,
+        num_images=None,
+        exts: List[str] = ["png", "jpg", "JPEG"],
         **kwargs
     ):
         """Construct an image dataset.
@@ -39,8 +39,8 @@ class ImageDataset(Dataset):
 
         for ext in exts:
             self.paths.extend(
-                list(glob(
-                    os.path.join(root, '*.%s' % ext), recursive=True)))
+                list(glob(os.path.join(root, "*.%s" % ext), recursive=True))
+            )
 
         self.paths = self.paths[:num_images]
         self.images = [Image.open(path).convert("RGB") for path in self.paths]
@@ -65,10 +65,10 @@ class MyCifarDataset(CIFAR10):
         **kwargs
     ):
         super().__init__(
-            root="./", # заменить на root
+            root=root,  # "./", # заменить на root
             train=train,
             transform=transform,
-            download=download
+            download=download,
         )
 
     def __getitem__(self, idx: int) -> Image:
