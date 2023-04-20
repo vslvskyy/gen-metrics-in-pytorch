@@ -54,11 +54,11 @@ def sqrt_newton_schulz(A, numIters, dtype=None):
             T = 0.5 * (3.0 * K - Z.bmm(Y))
             Y = Y.bmm(T)
             Z = T.bmm(Z)
-        sA = Y*torch.sqrt(normA).view(batchSize, 1, 1).expand_as(A)
+        sA = Y * torch.sqrt(normA).view(batchSize, 1, 1).expand_as(A)
     return sA
 
 
-class Registry():
+class Registry:
     def __init__(self):
         self.registry_dct: Dict[str, Any] = {}
 
@@ -77,7 +77,6 @@ class Registry():
         self.registry_dct[name] = item
 
     def fill_dct(self, key: str):
-
         def wraps(func):
             self.registry_dct[key] = func
 
