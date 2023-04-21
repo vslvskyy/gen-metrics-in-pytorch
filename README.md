@@ -88,3 +88,28 @@ The FID is calculated by 50k generated images and CIFAR10.
 | SNGAN(CNN) | $$7.64 \pm 0.05$$ | $$18.30$$ | $$23.29$$ | $$20.47$$ | $$25.53$$ | $$0.55$$ | $$0.50$$ |
 | SNGAN(ResNet) | $$8.20 \pm 0.12$$ | $$14.68$$ | $$18.76$$ | $$16.84$$ | $$20.97$$ | $$0.58$$ | $$0.51$$ |
 | STYLEGAN2-ADA | $9.70 \pm 0.12$$ | $$2.94$$ | $$3.88$$ | $$5.07$$ | $$6.07$$ | $$0.64$$ | $$0.56$$ |
+
+
+## Installation guide
+
+### Clone repository
+```shell
+git clone https://github.com/vslvskyy/gan-metrics-in-pytorch
+cd gan_metrics_in_pytorch
+```
+
+### Install dependencies
+```shell
+pip install -r requirements.txt
+```
+
+## Metrics calculating
+```shell
+python3 main.py \
+--metric "IS, FID, ImprovedPRD" \
+--generated_data_type "cifar10" --generated_data_pth "./"
+--real_data_type "cifar10" --real_data_pth "./"
+```
+You can find generated samples in the `examples` directory. To reproduce the results do the following:
+
+
