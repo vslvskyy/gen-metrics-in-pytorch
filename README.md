@@ -113,5 +113,13 @@ python3 main.py \
   --real_data_type "cifar10" --real_data_pth "./"
 ```
 
+Or you can use metrics classes directly:
+```python
+from gan_metrics import FID, InceptionScore, ImprovedPRD
+
+
+metric_class = FID(real_data)
+metric_val = metric_class.calc_metric(generated_data)
+```
 
 
