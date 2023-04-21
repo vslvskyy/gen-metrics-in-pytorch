@@ -92,14 +92,10 @@ The FID is calculated by 50k generated images and CIFAR10.
 
 ## Installation guide
 
-### Clone repository
+Clone repository and install dependencies
 ```shell
 git clone https://github.com/vslvskyy/gan-metrics-in-pytorch
 cd gan_metrics_in_pytorch
-```
-
-### Install dependencies
-```shell
 pip install -r requirements.txt
 ```
 
