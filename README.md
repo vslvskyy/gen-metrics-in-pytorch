@@ -106,9 +106,9 @@ pip install -r requirements.txt
 ## Metrics calculating
 ```shell
 python3 main.py \
---metric "IS, FID, ImprovedPRD" \
---generated_data_type "cifar10" --generated_data_pth "./"
---real_data_type "cifar10" --real_data_pth "./"
+  --metric "IS, FID, ImprovedPRD" \
+  --generated_data_type "cifar10" --generated_data_pth "./" \
+  --real_data_type "cifar10" --real_data_pth "./"
 ```
 You can find generated samples in the `examples` directory. To reproduce the results do the following:
 
