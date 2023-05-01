@@ -60,10 +60,10 @@ def sqrt_newton_schulz(A, numIters, dtype=None):
 
 class Registry:
     def __init__(self):
-        self.registry_dct: Dict[str, Any] = {}
+        self.items: Dict[str, Any] = {}
 
     def __getitem__(self, name: str) -> Any:
-        item = self.registry_dct.get(name)
+        item = self.items.get(name)
 
         if item is None:
             raise ValueError("Unknown metric or data type")
@@ -74,17 +74,13 @@ class Registry:
         if not isinstance(name, str):
             raise TypeError("Metric or data type should be str")
 
-        self.registry_dct[name] = item
+        self.items[name] = item
 
-    def fill_dct(self, key: str):
-        def wraps(func):
-            self.registry_dct[key] = func
+    def add_to_registry(self, key: str):
 
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                return func(*args, **kwargs)
-
-            return wrapper
+        def wraps(cls):
+            self.items[key] = cls
+            return cls
 
         return wraps
 
