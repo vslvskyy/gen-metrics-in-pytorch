@@ -6,10 +6,10 @@ from torch.utils.data import DataLoader
 
 from .base_class import BaseGanMetric, metrics
 from .inception_net import InceptionV3
-from .utils import Timer
+from .utils import Timer, datasets, base_transformer
 
 
-@metrics.fill_dct("IS")
+@metrics.add_to_registry("is")
 class InceptionScore(BaseGanMetric):
     """
     Class for Inception Score calculation
@@ -27,8 +27,10 @@ class InceptionScore(BaseGanMetric):
         self.inception_model = InceptionV3(
             [InceptionV3.BLOCK_INDEX_BY_DIM[1008]], resize_input=False
         )
+        self.transform = base_transformer
 
-    def calc_is(self, probs: torch.Tensor) -> Tuple[float, dict]:
+    @staticmethod
+    def compute_is_from_probs(probs: torch.Tensor) -> float:
         """
         Batch Inception Score calculation
 
@@ -36,22 +38,35 @@ class InceptionScore(BaseGanMetric):
             probs: inception features (conditional probabilities of classes)
         returns:
             inseption score value
-            dictionary with time information
         """
 
-        time_info = {}
-        with Timer(time_info, "InceptionScore: calc_is"):
-            kl = probs * (
-                torch.log(probs) - torch.log(torch.unsqueeze(torch.mean(probs, 0), 0))
+        kl = probs * (
+            torch.log(probs) - torch.log(torch.unsqueeze(torch.mean(probs, 0), 0))
+        )
+        kl = torch.mean(torch.sum(kl, 1))
+        res = torch.exp(kl)
+
+        return res
+
+    def compute_probs(self, path: str, data_type: str, save_path=None) -> torch.Tensor:
+        if data_type == "stats":
+            probs = np.load(path)
+        else:
+            data = datasets[data_type](
+                root=path,
+                transform=self.transform,
+                train=True,
+                download=True
             )
-            kl = torch.mean(torch.sum(kl, 1))
-            res = torch.exp(kl)
+            data = DataLoader(data, batch_size=50, num_workers=2)
+            probs = self.inception_model.get_features(data, dim=1008, device=self.device)
 
-        return res, time_info
+            if save_path is not None:
+                np.save(save_path, probs.cpu().numpy())
 
-    def calc_metric(
-        self, generated_data: Union[DataLoader, str]
-    ) -> Tuple[float, float, dict]:
+        return probs
+
+    def __call__(self, gen_path, gen_type="folder", gen_save_path=None, **kwargs) -> Tuple[float, float]:
         """
         Inception Score calculation
 
@@ -60,47 +75,20 @@ class InceptionScore(BaseGanMetric):
             probs: inception features (conditional probabilities of classes)
         returns:
             mean and standard deviation of batchs' IS
-            dictionary with time information
         """
+        probs = self.compute_probs(gen_path, gen_type, gen_save_path)
+        scores = []
+        for _, probs_batch in enumerate(
+            torch.split(
+                probs, split_size_or_sections=probs.shape[0] // self.splits_n
+            ),
+            start=0,
+        ):
+            score = self.compute_is_from_probs(probs_batch)
+            scores.append(score)
 
-        if isinstance(generated_data, DataLoader):
-            loader = generated_data
-            probs_pth = None
-        elif isinstance(str):
-            loader = None
-            probs_pth = generated_data
-        else:
-            raise TypeError(
-                "InceptionScore.calc_metric: generated_data should be DataLoader or str"
-            )
+        scores = torch.stack(scores)
+        mean_score = torch.mean(scores).cpu().item()
+        std = torch.std(scores).cpu().item()
 
-        time_info = {}
-        with Timer(time_info, "InceptionScore: calc_metric"):
-            if probs_pth is None:
-                with Timer(time_info, "InceptionV3: get_features"):
-                    probs = self.inception_model.get_features(
-                        loader, dim=1008, device=self.device
-                    )
-            else:
-                probs = np.load(probs_pth)
-
-            scores = []
-            with Timer(time_info, "InceptionScore: total_calc_is"):
-                for i, batch in enumerate(
-                    torch.split(
-                        probs, split_size_or_sections=probs.shape[0] // self.splits_n
-                    ),
-                    start=0,
-                ):
-                    score = self.calc_is(batch)[0]
-                    scores.append(score)
-
-                scores = torch.stack(scores)
-                inception_score = torch.mean(scores).cpu().item()
-                std = torch.std(scores).cpu().item()
-
-            time_info["duration/InceptionScore: mean_calc_is"] = (
-                time_info["duration/InceptionScore: total_calc_is"] / self.splits_n
-            )
-
-        return (inception_score, std), time_info
+        return (mean_score, std)
