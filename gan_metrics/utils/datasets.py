@@ -1,4 +1,5 @@
 import os
+import torchvision.transforms as T
 
 from glob import glob
 from typing import List, Optional, Callable
@@ -13,7 +14,7 @@ from .other_utils import Registry
 datasets = Registry()
 
 
-@datasets.fill_dct("ImageDataset")
+@datasets.add_to_registry("folder")
 class ImageDataset(Dataset):
     """A simple image dataset for calculating inception score and FID."""
 
@@ -54,7 +55,7 @@ class ImageDataset(Dataset):
         return self.transform(self.images[idx])
 
 
-@datasets.fill_dct("cifar10")  # добавить другие стандартные датасеты
+@datasets.add_to_registry("cifar10")
 class MyCifarDataset(CIFAR10):
     def __init__(
         self,
@@ -75,6 +76,6 @@ class MyCifarDataset(CIFAR10):
         return super().__getitem__(idx)[0]
 
 
-@datasets.fill_dct("stats")
+@datasets.add_to_registry("stats")
 def stats_type(root: str, **kwargs) -> str:
     return root
