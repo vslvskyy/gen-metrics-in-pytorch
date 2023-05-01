@@ -1,4 +1,4 @@
-from typing import Union, Tuple, Dict
+from typing import Tuple, Dict
 
 import numpy as np
 import torch
@@ -6,10 +6,10 @@ from torch.utils.data import DataLoader
 
 from .base_class import BaseGanMetricStats, metrics
 from .inception_net import InceptionV3
-from .utils import Timer
+from .utils import datasets, base_transformer
 
 
-@metrics.fill_dct("ImprovedPRD")
+@metrics.add_to_registry("precision_recall")
 class ImprovedPRD(BaseGanMetricStats):
     """
     Class for Improved Precision and Recall for Distributions (PRD) calculation
@@ -17,7 +17,6 @@ class ImprovedPRD(BaseGanMetricStats):
 
     def __init__(
         self,
-        real_data: DataLoader,
         device: torch.device = torch.device("cuda:0"),
         k: int = 3,
         # добавить возможность считать признаки из vgg-16
@@ -29,15 +28,12 @@ class ImprovedPRD(BaseGanMetricStats):
             device: what model device to use
             k: k for kth-nearest-neighbor
         """
-        super().__init__(real_data)
-        if self.real_data_loader is None:
-            raise TypeError("ImprovedPRD.__init__: real_data should be DataLoader")
+        super().__init__()
 
         self.inception_model = InceptionV3(
             [InceptionV3.BLOCK_INDEX_BY_DIM[2048]], resize_input=False
         )
-        self.real_ftrs = None
-        self.real_knn_distances = None
+        self.transform = base_transformer
         self.device = device
         self.k = k
 
@@ -52,10 +48,8 @@ class ImprovedPRD(BaseGanMetricStats):
         """
         kth_distances = np.zeros(len(features))
         for i, f in enumerate(features):
-            pairwise_distances = torch.norm(features - f, 2, dim=-1)
-            kth_distances[i] = np.partition(pairwise_distances.cpu().numpy(), self.k)[
-                self.k
-            ]
+            pairwise_distances = torch.norm(features - f, 2, dim=-1).cpu().numpy()
+            kth_distances[i] = np.partition(pairwise_distances, self.k)[self.k]
 
         return kth_distances
 
@@ -83,76 +77,44 @@ class ImprovedPRD(BaseGanMetricStats):
 
         return cnt / len(b_ftrs)
 
-    def calc_metric(
-        self, generated_data: DataLoader, precision: bool = True, recall: bool = True
-    ) -> Tuple[Union[Tuple[float, float], float], dict]:
+    def compute_ftrs(self, path, data_type, save_path=None) -> torch.Tensor:
+        if data_type == "stats":
+            ftrs = np.load(path)
+        else:
+            data = datasets[data_type](
+                root=path,
+                transform=self.transform,
+                train=True,
+                download=True
+            )
+            data = DataLoader(data, batch_size=50, num_workers=2)
+            ftrs = self.inception_model.get_features(data, dim=2048, device=self.device)
+
+            if save_path is not None:
+                np.save(save_path, ftrs.cpu().numpy())
+
+        return ftrs
+
+    def __call__(self, gen_path, gen_type="folder", real_path=None, real_type="folder", gen_save_path=None, real_save_path=None) -> Tuple[float, float]:
         """
         Calculates Improved PRD for real and generated data
 
         Args:
-            generated_data: dataloader with generated samples
-            precision: wether to calculate precision
-            recall: wether to calculate recall
+            gen_path: path to generated samples or features from Inception Model
+            gen_type: type of generated data (folder, stats, or standard dataset)
+            real_path: path to real samples or features from Inception Model
+            real_type: type of real data (folder, stats, or standard dataset)
         returns:
             precision, recall of generated_data w. r. t. real_data
         """
+        gen_ftrs = self.compute_ftrs(gen_path, gen_type, gen_save_path)
+        real_ftrs = self.compute_ftrs(real_path, real_type, real_save_path)
+        num_obj = min(len(real_ftrs), len(gen_ftrs))
 
-        if isinstance(generated_data, DataLoader):
-            generated_data_loader = generated_data
-        else:
-            raise TypeError(
-                "ImprovedPRD.calc_metric: generated_data should be DataLoader"
-            )
+        real_knn_distances = self.get_knn_distances(real_ftrs[:num_obj])
+        gen_knn_distances = self.get_knn_distances(gen_ftrs[:num_obj])
 
-        time_info = {}
-        with Timer(time_info, "ImprovedPRD: calc_metric"):
-            if self.real_knn_distances is None:
-                if self.real_ftrs is None:
-                    with Timer(time_info, "InceptionV3: get_features (real)"):
-                        self.real_ftrs = self.inception_model.get_features(
-                            self.real_data_loader, dim=2048, device=self.device
-                        )
+        precision = self.calc_coverage(real_knn_distances, real_ftrs[:num_obj], gen_ftrs[:num_obj])
+        recall = self.calc_coverage(gen_knn_distances, gen_ftrs[:num_obj], real_ftrs[:num_obj])
 
-                with Timer(time_info, "ImprovedPRD: get_knn_distances (real)"):
-                    self.real_knn_distances = self.get_knn_distances(self.real_ftrs)
-
-            with Timer(time_info, "InceptionV3: get_features (generated)"):
-                generated_ftrs = self.inception_model.get_features(
-                    generated_data_loader, dim=2048, device=self.device
-                )
-
-            num_obj = min(
-                len(self.real_ftrs), len(generated_ftrs)
-            )  # to be sure, that |real_ftrs| = |generated_ftrs|
-            if num_obj <= 0:
-                raise TypeError(
-                    "ImprovedPRD.calc_metric: generated or real data manifold is empty"
-                )
-
-            with Timer(time_info, "ImprovedPRD: get_knn_distances (generated)"):
-                self.generated_knn_distances = self.get_knn_distances(
-                    generated_ftrs[:num_obj]
-                )
-
-            if precision:
-                with Timer(time_info, "ImprovedPRD: calc_coverage (precision)"):
-                    precision = self.calc_coverage(
-                        self.real_knn_distances[:num_obj],
-                        self.real_ftrs[:num_obj],
-                        generated_ftrs[:num_obj],
-                    )
-
-            if recall:
-                with Timer(time_info, "ImprovedPRD: calc_coverage (recall)"):
-                    recall = self.calc_coverage(
-                        self.generated_knn_distances,
-                        generated_ftrs[:num_obj],
-                        self.real_ftrs[:num_obj],
-                    )
-
-        if precision and recall:
-            return (precision, recall), time_info
-        if precision:
-            return precision, time_info
-        if recall:
-            return recall, time_info
+        return precision, recall
