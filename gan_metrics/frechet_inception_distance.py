@@ -7,10 +7,10 @@ from torch.utils.data import DataLoader
 
 from .base_class import BaseGanMetricStats, metrics
 from .inception_net import InceptionV3
-from .utils import Timer, torch_cov, sqrt_newton_schulz
+from .utils import torch_cov, sqrt_newton_schulz, datasets, base_transformer, clean_fid_transformer
 
 
-@metrics.fill_dct("FID")
+@metrics.add_to_registry("fid")
 class FID(BaseGanMetricStats):
     """
     Class for Frechet Inception Distance calculation
@@ -18,10 +18,7 @@ class FID(BaseGanMetricStats):
 
     def __init__(
         self,
-        real_data: Union[DataLoader, str],
-        use_torch: bool = False,
         device: torch.device = torch.device("cuda:0"),
-        eps: float = 1e-6,
         **kwargs
     ):
         """
@@ -31,196 +28,183 @@ class FID(BaseGanMetricStats):
             device: what model device to use
             eps: prevent covmean from being singular matrix
         """
-        super().__init__(real_data)
         self.inception_model = InceptionV3(
             [InceptionV3.BLOCK_INDEX_BY_DIM[2048]], resize_input=False
         )
-        self.use_torch = use_torch
+        self.transform = base_transformer
         self.device = device
-        self.eps = eps
 
-    def calc_stats(
-        self, loader: DataLoader, device: torch.device = torch.device("cuda:0")
-    ) -> Tuple[torch.FloatTensor, torch.FloatTensor, dict]:
-        """
-        Calculates statistics of inception features
-
-        Args:
-            loader: real world or generated data
-            batch_size: number of objects in one batch
-            device: what model device to use
-        returns:
-            mean and covariance of inception features
-            dictionary with time information
-
-        """
-
-        time_info = {}
-        with Timer(time_info, "FID: calc_stats"):
-            with Timer(time_info, "InceptionV3: get_features"):
-                acts = self.inception_model.get_features(
-                    loader, dim=2048, device=device
-                )
-            mu = torch.mean(acts, axis=0)
-            sigma = torch_cov(acts)
-        return mu, sigma, time_info
-
-    def calc_fd_in_np(
-        self, m1: np.ndarray, s1: np.ndarray, m2: np.ndarray, s2: np.ndarray
-    ) -> Tuple[float, dict]:
+    @staticmethod
+    def compute_fid_from_stats(
+            mu: torch.Tensor,
+            sigma: torch.Tensor,
+            ref_mu: torch.Tensor,
+            ref_sigma: torch.Tensor,
+            eps: float = 1e-6
+        ) -> float:
         """
         Calculates Frechet Distance betweet two distributions
 
         Args:
-            m1: mean of first distribution
-            s1: covariance matrix of first distribution
-            m2: mean of second distribution
-            s2: covariance matrix of second distribution
+            mu: mean of first distribution
+            sigma: covariance matrix of first distribution
+            ref_mu: mean of second distribution
+            ref_sigma: covariance matrix of second distribution
         returns:
             frechet distance between two distributions
-            dictionry with time information
         """
-        time_info = {}
-        with Timer(time_info, "FID: calc_fd_in_np"):
-            m1 = np.atleast_1d(m1)
-            m2 = np.atleast_1d(m2)
+        diff = mu - ref_mu
+        # Run 50 iterations of newton-schulz to get the matrix sqrt of (sigma1 x sigma2)
+        covmean = sqrt_newton_schulz(sigma.mm(ref_sigma).unsqueeze(0), 50).squeeze()
+        if not torch.isfinite(covmean).all():
+            msg = (
+                "fid calculation produces singular product; "
+                "adding %s to diagonal of cov estimates"
+            ) % eps
+            print(msg)
+            offset = torch.eye(sigma.shape[0]) * eps
+            covmean = sqrt_newton_schulz((sigma + offset).mm(ref_sigma + offset).unsqueeze(0), 50).squeeze()
 
-            s1 = np.atleast_2d(s1)
-            s2 = np.atleast_2d(s2)
+        if torch.any(torch.isnan(covmean)):
+            return float("nan")
 
-            diff = m1 - m2
+        fid = (
+            diff.dot(diff) +
+            torch.trace(sigma) +
+            torch.trace(ref_sigma) -
+            2 * torch.trace(covmean)
+        ).cpu().item()
+        return fid
 
-            # Product might be almost singular
-            covmean, _ = linalg.sqrtm(s1.dot(s2), disp=False)
-            if not np.isfinite(covmean).all():
-                msg = (
-                    "fid calculation produces singular product; "
-                    "adding %s to diagonal of cov estimates"
-                ) % self.eps
-                print(msg)
-                offset = np.eye(s1.shape[0]) * self.eps
-                covmean = linalg.sqrtm((s1 + offset).dot(s2 + offset))
+    def read_stats_from_file(self, path):
+        f = np.load(path)
+        mu, sigma = f["mu"][:], f["sigma"][:]
+        f.close()
+        mu = torch.tensor(mu, dtype=torch.float).to(self.device)
+        sigma = torch.tensor(sigma, dtype=torch.float).to(self.device)
 
-            # Numerical error might give slight imaginary component
-            if np.iscomplexobj(covmean):
-                if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
-                    m = np.max(np.abs(covmean.imag))
-                    raise ValueError("Imaginary component {}".format(m))
-                covmean = covmean.real
+        return mu, sigma
 
-            # tr_covmean = np.trace(covmean)
+    def compute_stats_from_data(self, data, save_path=None):
+        acts = self.inception_model.get_features(data, dim=2048, device=self.device)
+        mu = torch.mean(acts, axis=0)
+        sigma = torch_cov(acts)
 
-            fd = diff @ diff + np.trace(s1) + np.trace(s2) - 2 * np.trace(covmean)
+        if save_path is not None:
+            np.savez_compressed(save_path, mu=mu.cpu().numpy(), sigma=sigma.cpu().numpy())
 
-        return fd, time_info
+        return mu, sigma
 
-    def calc_fd_in_torch(
-        self, m1: torch.Tensor, s1: torch.Tensor, m2: torch.Tensor, s2: torch.Tensor
-    ) -> Tuple[float, dict]:
-        """
-        Calculates Frechet Distance betweet two distributions
-
-        Args:
-            m1: mean of first distribution
-            s1: covariance matrix of first distribution
-            m2: mean of second distribution
-            s2: covariance matrix of second distribution
-        returns:
-            frechet distance between two distributions
-            dictionry with time information
-        """
-
-        time_info = {}
-        with Timer(time_info, "FID: calc_fd_in_torch"):
-            diff = m1 - m2
-            # Run 50 itrs of newton-schulz to get the matrix sqrt of (sigma1 x sigma2)
-            covmean = sqrt_newton_schulz(s1.mm(s2).unsqueeze(0), 50)
-            if torch.any(torch.isnan(covmean)):
-                return float("nan"), time_info
-            covmean = covmean.squeeze()
-            fd = (
-                (
-                    diff @ diff
-                    + torch.trace(s1)
-                    + torch.trace(s2)
-                    - 2 * torch.trace(covmean)
-                )
-                .cpu()
-                .item()
-            )
-        return fd, time_info
-
-    def calc_metric(self, generated_data: Union[DataLoader, str]) -> Tuple[float, dict]:
-        """
-        Calculates Frechet Inception Distance betweet two datasets
-
-        Args:
-            generated_data: generated data
-        returns:
-            frechet inception distance
-            dictionary with time information
-        """
-
-        if isinstance(generated_data, DataLoader):
-            generated_data_loader = generated_data
-            generated_data_stats_pth = None
-        elif isinstance(generated_data, str):
-            generated_data_loader = None
-            generated_data_stats_pth = generated_data
+    def compute_stats(self, path, data_type, save_path=None):
+        if data_type == "stats":
+            mu, sigma = self.read_stats_from_file(path)
         else:
-            raise TypeError(
-                "FID.calc_metric: generated_data should be DataLoader or str"
+            data = datasets[data_type](
+                root=path,
+                transform=self.transform,
+                train=True,
+                download=True
             )
+            data = DataLoader(data, batch_size=50, num_workers=2)
+            mu, sigma = self.compute_stats_from_data(data, save_path)
 
-        time_info = {}
-        with Timer(time_info, "FID: calc_metric"):
-            if generated_data_stats_pth is None:
-                with Timer(time_info, "FID: calc_stats, generated data"):
-                    m1, s1, calc_stats_time = self.calc_stats(
-                        generated_data_loader, device=self.device
-                    )
-                time_info.update(calc_stats_time)
+        return mu, sigma
 
-            else:
-                f = np.load(generated_data_stats_pth)
-                m1, s1 = f["mu"][:], f["sigma"][:]
-                f.close()
-                if isinstance(m1, np.array):
-                    m1 = torch.tensor(m1, dtype=torch.float).to(self.device)
-                if isinstance(s1, np.array):
-                    s1 = torch.tensor(s1, dtype=torch.float).to(self.device)
+    def __call__(self, gen_path, gen_type="folder", real_path=None, real_type="folder",
+                 gen_save_path=None, real_save_path=None):
+        """
+        Calculates Frecher Inception Distance for real and generated data
 
-            if self.real_data_stats_pth is None:
-                with Timer(time_info, "FID: calc_stats, real data"):
-                    m2, s2, calc_stats_time = self.calc_stats(
-                        self.real_data_loader, device=self.device
-                    )
-                time_info.update(calc_stats_time)
+        Args:
+            gen_path: path to generated samples or features from Inception Model
+            gen_type: type of generated data (folder, stats, or standard dataset)
+            real_path: path to real samples or features from Inception Model
+            real_type: type of real data (folder, stats, or standard dataset)
+        returns:
+            frechet inception distance between real and generated data
+        """
+        mu, sigma = self.compute_stats(gen_path, gen_type, gen_save_path)
+        ref_mu, ref_sigma = self.compute_stats(real_path, real_type, real_save_path)
+        return self.compute_fid_from_stats(mu, sigma, ref_mu, ref_sigma)
 
-            else:
-                f = np.load(self.real_data_stats_pth)
-                m2, s2 = f["mu"][:], f["sigma"][:]
-                f.close()
-                if isinstance(m2, np.array):
-                    m2 = torch.tensor(m2, dtype=torch.float).to(self.device)
-                if isinstance(s2, np.array):
-                    s2 = torch.tensor(s2, dtype=torch.float).to(self.device)
 
-            assert (
-                m1.shape == m2.shape
-            ), "FID.calc_metric: generated and real mean vectors have different lengths"
-            assert (
-                s1.shape == s2.shape
-            ), "FID.calc_metric: generated and real covariances have different dimensions"
+@metrics.add_to_registry("clean_fid")
+class CLEANFID(FID):
+    """
+    Class for Clean Frechet Inception Distance calculation
+    """
 
-            if self.use_torch:
-                fid = self.calc_fd_in_torch(m1, s1, m2, s2)[0]
-            else:
-                fid = self.calc_fd_in_np(
-                    m1.cpu().numpy(),
-                    s1.cpu().numpy(),
-                    m2.cpu().numpy(),
-                    s2.cpu().numpy(),
-                )[0]
+    def __init__(
+            self,
+            device: torch.device = torch.device("cuda:0"),
+            **kwargs
+        ):
+        super().__init__()
+        self.transform = clean_fid_transformer
 
-        return fid, time_info
+    def read_stats_from_file(self, path):
+        print("Please, be sure that these stats are calculated from data with correct transform!")
+        return super().read_stats_from_file(path)
+
+
+@metrics.add_to_registry("fid_numpy")
+class FIDNUMPY(FID):
+    """
+    Class for Frechet Inception Distance calculation in numpy
+    """
+
+    @staticmethod
+    def compute_fid_from_stats(
+            mu: torch.Tensor,
+            sigma: torch.Tensor,
+            ref_mu: torch.Tensor,
+            ref_sigma: torch.Tensor,
+            eps: float = 1e-6
+    ) -> float:
+        """
+        Calculates Frechet Distance betweet two distributions
+
+        Args:
+            mu: mean of first distribution
+            sigma: covariance matrix of first distribution
+            ref_mu: mean of second distribution
+            ref_sigma: covariance matrix of second distribution
+
+        returns:
+            frechet distance between two distributions
+        """
+        mu = np.atleast_1d(mu.cpu().numpy())
+        ref_mu = np.atleast_1d(ref_mu.cpu().numpy())
+
+        sigma = np.atleast_2d(sigma.cpu().numpy())
+        ref_sigma = np.atleast_2d(ref_sigma.cpu().numpy())
+
+        diff = mu - ref_mu
+
+        # Product might be almost singular
+        covmean, _ = linalg.sqrtm(sigma.dot(ref_sigma), disp=False)
+        if not np.isfinite(covmean).all():
+            msg = (
+                "fid calculation produces singular product; "
+                "adding %s to diagonal of cov estimates"
+            ) % eps
+            print(msg)
+            offset = np.eye(sigma.shape[0]) * eps
+            covmean = linalg.sqrtm((sigma + offset).dot(ref_sigma + offset))
+        if not np.isfinite(covmean).all():
+            return float("nan")
+        # Numerical error might give slight imaginary component
+        if np.iscomplexobj(covmean):
+            if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
+                m = np.max(np.abs(covmean.imag))
+                raise ValueError("Imaginary component {}".format(m))
+            covmean = covmean.real
+
+        fid = (
+            diff.dot(diff) +
+            np.trace(sigma) +
+            np.trace(ref_sigma) -
+            2 * np.trace(covmean)
+        )
+
+        return fid
