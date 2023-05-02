@@ -50,7 +50,7 @@ class InceptionScore(BaseGanMetric):
 
     def compute_probs(self, path: str, data_type: str, save_path=None) -> torch.Tensor:
         if data_type == "stats":
-            probs = torch.tensor(np.load(path))
+            probs = torch.tensor(np.load(path)).to(self.device)
         else:
             data = datasets[data_type](
                 root=path,
