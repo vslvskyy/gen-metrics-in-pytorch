@@ -97,7 +97,7 @@ class FID(BaseGanMetricStats):
 
     def compute_stats(self, path, data_type, save_path=None):
         if data_type == "stats":
-            mu, sigma = self.read_stats_from_file(path)
+            mu, sigma = self.read_stats_from_file(path).to(self.device)
         else:
             data = datasets[data_type](
                 root=path,
