@@ -79,7 +79,7 @@ class ImprovedPRD(BaseGanMetricStats):
 
     def compute_ftrs(self, path, data_type, save_path=None) -> torch.Tensor:
         if data_type == "stats":
-            ftrs = np.load(path)
+            ftrs = torch.tensor(np.load(path))
         else:
             data = datasets[data_type](
                 root=path,
