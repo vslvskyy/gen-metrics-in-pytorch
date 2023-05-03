@@ -113,14 +113,14 @@ You can run `main.py` with appropriate arguments to calculate metrics:
 ```shell
 python main.py \
     --metric fid \
-    --gen_type folder \path_to_folder_with\images \
-    --real_type stats \path_to_file_with\stats.npz \
+    --gen_data folder \path_to_folder_with\images \
+    --real_data stats \path_to_file_with\stats.npz \
     --gen_save_path \path_to_file_to_save\stats
 ```
 
 Or you can use metrics classes directly:
 ```python
-from gan_metrics import FID, InceptionScore, ImprovedPRD
+from gen_metrics import FID, InceptionScore, ImprovedPRD
 
 
 metric_class = FID(real_data)
