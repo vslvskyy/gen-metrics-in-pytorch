@@ -19,7 +19,7 @@ The main component of IS is an Inception model, which is a pre-trained classifie
 Inception Model returns conditional probability p(y|x) (y - class label, x - input image), this probability has **low entropy** if x is realistic. 
 Besides, generative model should produce various images, so p(y) should have **high entropy**. It turns out that the distributions should be far from each other.
 
-$$\text{IS}(G) = \exp(\mathbb{E}_{x\sim p_g}D_{KL}(p(y|x)\|p(y)))$$
+$$\text{IS}(G) = \exp\big(\mathbb{E}_{x\sim p_g}\text{KL}[p(y|x)\|p(y)]\big)$$
 
 Inception Score reflects KL-Divergence between p(y|x) and p(y), so it should be maximized.
 
@@ -94,6 +94,11 @@ The FID is calculated by 50k generated images and CIFAR10.
 
 
 ## Installation guide
+Needed requirments:
+- scipy==1.5.4
+- torch>=1.8.1
+- torchvision>=0.9.1
+- numpy
 
 Clone repository and install dependencies
 ```shell
@@ -106,10 +111,10 @@ pip install -r requirements.txt
 
 You can run `main.py` with appropriate arguments to calculate metrics:
 ```shell
-python3 main.py \
-  --metric "IS, FID, ImprovedPRD" \
-  --generated_data_type "cifar10" --generated_data_pth "./" \
-  --real_data_type "cifar10" --real_data_pth "./"
+python main.py --metric fid \
+        --gen_type folder \path\to\folder\with\images \
+        --real_type stats \path\to\file\with\stats.npz \
+        --gen_save_path \path\to\file\to\save\stats
 ```
 
 Or you can use metrics classes directly:
@@ -118,7 +123,9 @@ from gan_metrics import FID, InceptionScore, ImprovedPRD
 
 
 metric_class = FID(real_data)
-metric_val = metric_class.calc_metric(generated_data)
+metric_val = metric_class(
+    gen_path, real_path,
+    gen_type, real_type,
+    gen_save_path, real_save_path
+)
 ```
-
-
