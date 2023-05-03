@@ -1,4 +1,4 @@
-# Standard GAN Metrics Pytorch Implementation
+# Standard Generative Models Metrics Pytorch Implementation
 
 Welcome to our GitHub repository that contains the implementation of several metrics for evaluating generative models! Our goal is to provide a user-friendly and efficient way for researchers and developers to evaluate the performance of their generative models. By using these metrics, you can get a better understanding of how well your generative model is performing and identify areas for improvement. We hope that our implementation will be a valuable resource for those looking to develop and evaluate generative models.
 
