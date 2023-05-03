@@ -111,10 +111,11 @@ pip install -r requirements.txt
 
 You can run `main.py` with appropriate arguments to calculate metrics:
 ```shell
-python main.py --metric fid \
-        --gen_type folder \path\to\folder\with\images \
-        --real_type stats \path\to\file\with\stats.npz \
-        --gen_save_path \path\to\file\to\save\stats
+python main.py \
+    --metric fid \
+    --gen_type folder \path\to\folder\with\images \
+    --real_type stats \path\to\file\with\stats.npz \
+    --gen_save_path \path\to\file\to\save\stats
 ```
 
 Or you can use metrics classes directly:
