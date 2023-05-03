@@ -102,8 +102,8 @@ Needed requirments:
 
 Clone repository and install dependencies
 ```shell
-git clone https://github.com/vslvskyy/gan-metrics-in-pytorch
-cd gan_metrics_in_pytorch
+git clone https://github.com/vslvskyy/gen-metrics-in-pytorch
+cd gen_metrics_in_pytorch
 pip install -r requirements.txt
 ```
 
