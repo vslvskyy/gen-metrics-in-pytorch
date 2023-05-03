@@ -113,9 +113,9 @@ You can run `main.py` with appropriate arguments to calculate metrics:
 ```shell
 python main.py \
     --metric fid \
-    --gen_type folder \path\to\folder\with\images \
-    --real_type stats \path\to\file\with\stats.npz \
-    --gen_save_path \path\to\file\to\save\stats
+    --gen_type folder \path_to_folder_with\images \
+    --real_type stats \path_to_file_with\stats.npz \
+    --gen_save_path \path_to_file_to_save\stats
 ```
 
 Or you can use metrics classes directly:
