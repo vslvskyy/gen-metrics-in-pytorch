@@ -119,12 +119,11 @@ class ImprovedPRD(BaseMetric):
         """
         gen_ftrs = self.compute_ftrs(gen_path, gen_type, gen_save_path)
         real_ftrs = self.compute_ftrs(real_path, real_type, real_save_path)
-        num_obj = min(len(real_ftrs), len(gen_ftrs))
 
-        real_knn_distances = self.get_knn_distances(real_ftrs[:num_obj])
-        gen_knn_distances = self.get_knn_distances(gen_ftrs[:num_obj])
+        real_knn_distances = self.get_knn_distances(real_ftrs)
+        gen_knn_distances = self.get_knn_distances(gen_ftrs)
 
-        precision = self.calc_coverage(real_knn_distances, real_ftrs[:num_obj], gen_ftrs[:num_obj])
-        recall = self.calc_coverage(gen_knn_distances, gen_ftrs[:num_obj], real_ftrs[:num_obj])
+        precision = self.calc_coverage(real_knn_distances, real_ftrs, gen_ftrs)
+        recall = self.calc_coverage(gen_knn_distances, gen_ftrs, real_ftrs)
 
         return precision, recall
