@@ -12,7 +12,7 @@ from .utils import torch_cov, sqrt_newton_schulz, clean_fid_transformer
 
 
 @metrics.add_to_registry("fid")
-class FID(BaseMetric):
+class Fid(BaseMetric):
     """
     Class for Frechet Inception Distance calculation
     https://arxiv.org/pdf/1706.08500.pdf
@@ -161,7 +161,7 @@ class FID(BaseMetric):
 
 
 @metrics.add_to_registry("clean_fid")
-class CLEANFID(FID):
+class CleanFid(Fid):
     """
     Class for Clean Frechet Inception Distance calculation
     https://arxiv.org/pdf/2104.11222.pdf
@@ -181,7 +181,7 @@ class CLEANFID(FID):
 
 
 @metrics.add_to_registry("fid_numpy")
-class FIDNUMPY(FID):
+class FidNumpy(Fid):
     """
     Class for Frechet Inception Distance calculation in numpy
     https://arxiv.org/pdf/1706.08500.pdf
