@@ -58,7 +58,7 @@ class Fid(BaseMetric):
                 "adding %s to diagonal of cov estimates"
             ) % eps
             print(msg)
-            offset = torch.eye(sigma.shape[0]) * eps
+            offset = (torch.eye(sigma.shape[0]) * eps).to(sigma.device)
             covmean = sqrt_newton_schulz((sigma + offset).mm(ref_sigma + offset).unsqueeze(0), 50).squeeze()
 
         if not torch.isfinite(covmean).all():
@@ -112,7 +112,7 @@ class Fid(BaseMetric):
 
         return mu, sigma
 
-    def compute_stats(self, path: str, data_type: str = "folder", save_path=None) -> torch.Tensor:
+    def compute_stats(self, path: str, data_type: str = "folder", save_path=None, **kwargs) -> torch.Tensor:
         """
         Compute mean vector mu and covariance matrix sigma of given data
 
@@ -131,7 +131,8 @@ class Fid(BaseMetric):
                 root=path,
                 transform=self.transform,
                 train=True,
-                download=True
+                download=True,
+                **kwargs
             )
             data = DataLoader(data, batch_size=50, num_workers=2)
             mu, sigma = self.compute_stats_from_data(data, save_path)
@@ -140,7 +141,7 @@ class Fid(BaseMetric):
 
     def __call__(
         self, gen_path: str, real_path: str, gen_type: str = "folder", real_type: str = "folder",
-        gen_save_path: Optional[str] = None, real_save_path: Optional[str] = None, eps: float = 1e-6
+        gen_save_path: Optional[str] = None, real_save_path: Optional[str] = None, eps: float = 1e-6, **kwargs
     ) -> float:
         """
         Calculates Frecher Inception Distance for real and generated data
@@ -155,8 +156,8 @@ class Fid(BaseMetric):
         returns:
             frechet inception distance between real and generated data
         """
-        mu, sigma = self.compute_stats(gen_path, gen_type, gen_save_path)
-        ref_mu, ref_sigma = self.compute_stats(real_path, real_type, real_save_path)
+        mu, sigma = self.compute_stats(gen_path, gen_type, gen_save_path, **kwargs)
+        ref_mu, ref_sigma = self.compute_stats(real_path, real_type, real_save_path, **kwargs)
         return self.compute_fid_from_stats(mu, sigma, ref_mu, ref_sigma, eps)
 
 
@@ -229,7 +230,8 @@ class FidNumpy(Fid):
         if np.iscomplexobj(covmean):
             if not np.allclose(np.diagonal(covmean).imag, 0, atol=1e-3):
                 m = np.max(np.abs(covmean.imag))
-                raise ValueError("Imaginary component {}".format(m))
+                print("Imaginary component {} too big".format(m))
+                return float("nan")
             covmean = covmean.real
 
         fid = (
