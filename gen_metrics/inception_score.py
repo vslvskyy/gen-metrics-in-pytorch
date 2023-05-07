@@ -19,7 +19,7 @@ class InceptionScore(BaseMetric):
     def __init__(
         self,
         device: torch.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu"),
-        splits_n: int = 10,
+        splits_n: int = 1,
         **kwargs
     ):
         """
@@ -52,7 +52,7 @@ class InceptionScore(BaseMetric):
 
         return res
 
-    def compute_probs(self, path: str, data_type: str, save_path=None) -> torch.Tensor:
+    def compute_probs(self, path: str, data_type: str, save_path=None, **kwargs) -> torch.Tensor:
         """
         Compute classes probabilities of given data from Inception Model
 
@@ -70,7 +70,8 @@ class InceptionScore(BaseMetric):
                 root=path,
                 transform=self.transform,
                 train=True,
-                download=True
+                download=True,
+                **kwargs
             )
             data = DataLoader(data, batch_size=50, num_workers=2)
             probs = self.inception_model.get_features(data, dim=1008, device=self.device)
@@ -92,7 +93,7 @@ class InceptionScore(BaseMetric):
             mean: mean of data parts' inception scores
             std: std of data parts' inception scores
         """
-        probs = self.compute_probs(gen_path, gen_type, gen_save_path)
+        probs = self.compute_probs(gen_path, gen_type, gen_save_path, **kwargs)
         scores = []
         for probs_batch in torch.split(probs, split_size_or_sections=probs.shape[0] // self.splits_n):
             score = self.compute_is_from_probs(probs_batch)
