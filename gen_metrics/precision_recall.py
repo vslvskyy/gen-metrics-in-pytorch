@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 import torch
@@ -34,7 +34,7 @@ class ImprovedPRD(BaseMetric):
         )
         self.k = k
 
-    def get_knn_distances(self, features: torch.FloatTensor) -> np.array:
+    def get_knn_distances(self, features: torch.Tensor) -> torch.Tensor:
         """
         Calculates distance to kth-neares-neighbor for each feature_vector from given manifold
 
@@ -43,21 +43,21 @@ class ImprovedPRD(BaseMetric):
         returns:
             distance to kth-neares-neighbor for each feature_vector
         """
-        kth_distances = np.zeros(len(features))
+        knn_distances = np.zeros(len(features))
         for i, f in enumerate(features):
             pairwise_distances = torch.norm(features - f, 2, dim=-1).cpu().numpy()
-            kth_distances[i] = np.partition(pairwise_distances, self.k)[self.k]
+            knn_distances[i] = np.partition(pairwise_distances, self.k)[self.k]
 
-        return kth_distances
+        return torch.tensor(knn_distances).to(self.device)
 
-    def calc_coverage(
-        self,
-        a_knn_distances: np.array,
+    @staticmethod
+    def compute_coverage(
+        a_knn_distances: torch.Tensor,
         a_ftrs: torch.Tensor,
         b_ftrs: torch.Tensor,
     ) -> float:
         """
-        Calculates ration of samples from manifold B that can be sampled from manifold A
+        Calculate ration of samples from manifold B that can be sampled from manifold A
 
         Args:
             a_knn_distances: distances to kth-nearest-neighbor for all samples from A
@@ -69,14 +69,55 @@ class ImprovedPRD(BaseMetric):
         cnt = 0
         for b in b_ftrs:
             ds = torch.norm(a_ftrs - b, 2, dim=-1)
-            if (ds.cpu().numpy() <= a_knn_distances).any():
+            if (ds <= a_knn_distances).any():
                 cnt += 1
 
         return cnt / len(b_ftrs)
 
-    def compute_ftrs(self, path: str, data_type: str = "folder", save_path=None) -> torch.Tensor:
+    def read_ftrs_from_file(self, path: str) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Compute Inception Model features of given data
+        Read features and knn_distances from file
+
+        Args:
+            path: path features and knn_distances
+        returns:
+            ftrs: features
+            knn_distances: knn_distances
+        """
+        f = np.load(path)
+        ftrs, knn_distances = f["ftrs"][:], f["knn_distances"][:]
+        f.close()
+        ftrs = torch.tensor(ftrs, dtype=torch.float).to(self.device)
+        knn_distances = torch.tensor(knn_distances, dtype=torch.float).to(self.device)
+
+        return ftrs, knn_distances
+
+    def compute_ftrs_from_data(
+        self, data: DataLoader, save_path: Optional[str] = None
+    ) -> Tuple[torch.tensor, torch.tensor]:
+        """
+        Compute features and knn_distances from DataLoader
+
+        Args:
+            data: Dataloader with images
+            save_path: where to save statistics
+        returns:
+            ftrs: features
+            knn_distances: knn_distances
+        """
+        ftrs = self.inception_model.get_features(data, dim=2048, device=self.device)
+        knn_distances = self.get_knn_distances(ftrs)
+
+        if save_path is not None:
+            np.savez_compressed(save_path, ftrs=ftrs.cpu().numpy(), knn_distances=knn_distances.cpu().numpy())
+
+        return ftrs, knn_distances
+
+    def compute_ftrs(
+        self, path: str, data_type: str = "folder", save_path: Optional[str] = None, **kwargs
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Compute Inception Model features of given data and pairwise distances for knn
 
         Args:
             path: path to images or statistics
@@ -84,26 +125,27 @@ class ImprovedPRD(BaseMetric):
             save_path: where to save statistics
         returns:
             ftrs: Inception Model features
+            knn_distances: pairwise distances
         """
         if data_type == "stats":
-            ftrs = torch.tensor(np.load(path)).to(self.device)
+            ftrs, knn_distances = self.read_ftrs_from_file(path)
         else:
             data = datasets[data_type](
                 root=path,
                 transform=self.transform,
                 train=True,
-                download=True
+                download=True,
+                **kwargs
             )
             data = DataLoader(data, batch_size=50, num_workers=2)
-            ftrs = self.inception_model.get_features(data, dim=2048, device=self.device)
+            ftrs, knn_distances = self.compute_ftrs_from_data(data, save_path)
 
-            if save_path is not None:
-                np.save(save_path, ftrs.cpu().numpy())
+        return ftrs, knn_distances
 
-        return ftrs
-
-    def __call__(self, gen_path, real_path: str, gen_type="folder", real_type="folder",
-                 gen_save_path=None, real_save_path=None) -> Tuple[float, float]:
+    def __call__(
+        self, gen_path: str, real_path: str, gen_type: str = "folder", real_type: str = "folder",
+        gen_save_path: Optional[str] = None, real_save_path: Optional[str] = None, **kwargs
+    ) -> Tuple[float, float]:
         """
         Calculates Improved PRD for real and generated data
 
@@ -117,13 +159,10 @@ class ImprovedPRD(BaseMetric):
         returns:
             precision, recall of generated_data w. r. t. real_data
         """
-        gen_ftrs = self.compute_ftrs(gen_path, gen_type, gen_save_path)
-        real_ftrs = self.compute_ftrs(real_path, real_type, real_save_path)
+        gen_ftrs, gen_knn_distances = self.compute_ftrs(gen_path, gen_type, gen_save_path, **kwargs)
+        real_ftrs, real_knn_distances = self.compute_ftrs(real_path, real_type, real_save_path, **kwargs)
 
-        real_knn_distances = self.get_knn_distances(real_ftrs)
-        gen_knn_distances = self.get_knn_distances(gen_ftrs)
-
-        precision = self.calc_coverage(real_knn_distances, real_ftrs, gen_ftrs)
-        recall = self.calc_coverage(gen_knn_distances, gen_ftrs, real_ftrs)
+        precision = self.compute_coverage(real_knn_distances, real_ftrs, gen_ftrs)
+        recall = self.compute_coverage(gen_knn_distances, gen_ftrs, real_ftrs)
 
         return precision, recall
