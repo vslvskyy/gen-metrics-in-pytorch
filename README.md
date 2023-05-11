@@ -57,21 +57,17 @@ $$\text{precision}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_g|}\sum\limits_{\phi_g \in 
 
 ### Values
 
-| | Train IS | Test IS  | FID | FID (precomputed train stats) | Clean FID |
-| ------------- | ------------- | ------------- | ------------- | ------------- |------------- |
-| pytorch-gan-metrics<br>`use_torch=False` | $11.26 \pm 0.13$ | $10.95 \pm 0.43$ | $3.1518$ | $$3.1518$$ | $$&mdash;$$ |
-| pytorch-gan-metrics<br>`use_torch=True` | $11.26 \pm 0.14$ | $10.95 \pm 0.45$ | $3.1491$ | $$3.1518$$ | $$&mdash;$$ |
-| gen-metrics-in-pytorch<br>`use_torch=False` | $$&mdash;$$ | $$&mdash;$$ | $3.1518$ | $$3.1488$$ | $$3.23$$ |
-| gen-metrics-in-pytorch<br>`use_torch=True` | $11.26 \pm 0.13$ | $10.95 \pm 0.43$ | $3.1496$ | $$3.1528$$ | $$3.23$$ |
+| | Train IS | Test IS  | FID | FID Numpy | Clean FID | Precision | Recall |
+| ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
+| official | $$11.24 \pm 0.20$$ | $$10.98 \pm 0.22$$ | $$3.1508$$ | $$&mdash;$$ | $$&mdash;$$ | $$&mdash;$$ | $$&mdash;$$ |
+| gen-metrics-in-pytorch | $11.26 \pm 0.12$ | $10.95 \pm 0.43$ | $3.1501$ | $$3.1492$$ | $$3.23$$ | $$0.698$$ | $$0.69$$ |
 
 ### Required Time in Seconds
 
-| | Train IS | Test IS  | FID | FID (precomputed train stats) | Clean FID |
-| ------------- | ------------- | -------------- | ------------- | ------------- | ------------- |
-| pytorch-gan-metrics<br>`use_torch=False` | $60.89$ | $12.82$ | $65.70$ | $$3.52$$ | $$&mdash;$$ |
-| pytorch-gan-metrics<br>`use_torch=True` | $62.02$ | $12.35$ | $59.62$ | $$10.27$$ | $$&mdash;$$ |
-| gen-metrics-in-pytorch<br>`use_torch=False` | $$&mdash;$$ | $$&mdash;$$ | $82.98$ | $$24.64$$ | $$186.28$$ |
-| gen-metrics-in-pytorch<br>`use_torch=True` | $62.58$ | $12.56$ | $59.17$ | $$0.66$$ | $$132.24$$ |
+| Data type | Train IS | Test IS  | FID | FID Numpy | Clean FID | Precision and Recall |
+| ------------- | ------------- | -------------- | ------------- | ------------- | ------------- | ------------- |
+| folder | $$120$$ | $$27$$ | $$146$$ | $$174$$ | $$164$$ | $$294$$ |
+| stats | $$3.24$$ | $$1.96$$ | $$3.92$$ | $$31$$ | $$3.77$$ | $$40$$ |
 
 ## Metric values for different GANs (CIFAR10)
 
@@ -90,8 +86,6 @@ The FID is calculated by 50k generated images and CIFAR10.
 | WGAN-GP(ResNet) | $$7.81 \pm 0.08$$ | $$16.75$$ | $$21.03$$ | $$0.55$$ | $$0.50$$ |
 | SNGAN(CNN) | $$7.64 \pm 0.05$$ | $$18.30$$ | $$23.29$$ | $$0.55$$ | $$0.50$$ |
 | SNGAN(ResNet) | $$8.20 \pm 0.12$$ | $$14.68$$ | $$18.76$$ | $$0.58$$ | $$0.51$$ |
-
-
 
 
 ## Installation guide
