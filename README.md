@@ -51,9 +51,11 @@ $$f(\phi, \Phi) := \text{I}[\exists \phi{'}: \|\phi - \phi{'}\|_2 \leq \|\phi{'}
 
 $$\text{precision}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_g|}\sum\limits_{\phi_g \in \Phi_g}f(\phi_g, \Phi_r) \space\space\space \text{recall}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_r|}\sum\limits_{\phi_r \in \Phi_r}f(\phi_r, \Phi_g)$$
 
-## Reproducing Results of pytorch-gan-metrics on CIFAR-10
+## Results on CIFAR-10
 
-[pytorch-gan-metrics](https://github.com/w86763777/pytorch-gan-metrics)
+Official results
+- FID and IS: [pytorch-gan-metrics](https://github.com/w86763777/pytorch-gan-metrics)
+- ImprovedPRD: using [improved-precision-and-recall-metric](https://github.com/kynkaat/improved-precision-and-recall-metric)
 
 ### Values
 
@@ -69,23 +71,29 @@ $$\text{precision}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_g|}\sum\limits_{\phi_g \in 
 | folder | $$120$$ | $$27$$ | $$146$$ | $$174$$ | $$164$$ | $$294$$ |
 | stats | $$3.24$$ | $$1.96$$ | $$3.92$$ | $$31$$ | $$3.77$$ | $$40$$ |
 
-## Metric values for different GANs (CIFAR10)
+Metrics calculation with data type "folder" may last about 1100 seconds, when you create Dataset with images for the first time.
 
-Models were taken from [pytorch-gan-collections](https://github.com/w86763777/pytorch-gan-collections).
+## Metric values for different models (CIFAR10)
 
-The FID is calculated by 50k generated images and CIFAR10.
+Models were taken from
+- GANs: [pytorch-gan-collections](https://github.com/w86763777/pytorch-gan-collections)
+- StyleGAN2-ADA: [stylegan2-ada-pytorch](https://github.com/NVlabs/stylegan2-ada-pytorch)
+- DDPM: [diffusion](https://github.com/hojonathanho/diffusion)
+- DDPM-GAN: [denoising-diffusion-gan](https://github.com/NVlabs/denoising-diffusion-gan)
+
+The metrics were calculated between 50k generated images and CIFAR10 train set.
 
 | Model | IS | FID | Clean FID | Precision | Recall |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
-| DDPM | $$9.48 \pm 0.10$$ | $$3.22$$ | $$4.01$$ | $$0.69$$ | $$0.58$$ |
-| DDPM-GAN | $$9.32 \pm 0.10$$ | $$4.20$$ | $$5.16$$ | $$0.66$$ | $$0.52$$ |
-| STYLEGAN2-ADA | $$9.70 \pm 0.12$$ | $$2.94$$ | $$3.88$$ | $$0.64$$ | $$0.56$$ |
 | DCGAN | $$5.98 \pm 0.08$$ | $$47.33$$ | $$58.71$$ | $$0.53$$ | $$0.25$$ |
 | WGAN(CNN) | $$6.46 \pm 0.06$$ | $$38.53$$ | $$45.80$$ | $$0.52$$ | $$0.15$$ |
 | WGAN-GP(CNN) | $$7.72 \pm 0.08$$ | $$18.74$$ | $$24.75$$ | $$0.54$$ | $$0.51$$ |
 | WGAN-GP(ResNet) | $$7.81 \pm 0.08$$ | $$16.75$$ | $$21.03$$ | $$0.55$$ | $$0.50$$ |
 | SNGAN(CNN) | $$7.64 \pm 0.05$$ | $$18.30$$ | $$23.29$$ | $$0.55$$ | $$0.50$$ |
 | SNGAN(ResNet) | $$8.20 \pm 0.12$$ | $$14.68$$ | $$18.76$$ | $$0.58$$ | $$0.51$$ |
+| STYLEGAN2-ADA | $$9.70 \pm 0.12$$ | $$2.94$$ | $$3.88$$ | $$0.64$$ | $$0.56$$ |
+| DDPM | $$9.48 \pm 0.10$$ | $$3.22$$ | $$4.01$$ | $$0.69$$ | $$0.58$$ |
+| DDPM-GAN | $$9.32 \pm 0.10$$ | $$4.20$$ | $$5.16$$ | $$0.66$$ | $$0.52$$ |
 
 
 ## Installation guide
