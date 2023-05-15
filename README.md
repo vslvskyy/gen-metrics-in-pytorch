@@ -54,7 +54,7 @@ $$f(\phi, \Phi) := \text{I}[\exists \phi{'}: \|\phi - \phi{'}\|_2 \leq \|\phi{'}
 
 $$\text{precision}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_g|}\sum\limits_{\phi_g \in \Phi_g}f(\phi_g, \Phi_r) \space\space\space \text{recall}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_r|}\sum\limits_{\phi_r \in \Phi_r}f(\phi_r, \Phi_g)$$
 
-## Reproducing metrics' official implementatinos r  esults on CIFAR-10
+## Reproducing metrics' official implementations results on CIFAR-10
 
 Official results
 - IS: [improved-gan](https://github.com/openai/improved-gan)
