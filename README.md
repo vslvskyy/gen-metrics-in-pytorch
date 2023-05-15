@@ -35,7 +35,7 @@ $\mu, \Sigma$ - mean vector and covariance matrix of generated or real features 
 
 Three configurations of this metric are implemented:
 - FID: all calculations are performed on pytorch. Matrix root extracting from [matrix_sqrt](https://github.com/msubhransu/matrix-sqrt).
-- FID_NUMPY: most calculations on pytorch. Matrix root extracting via scipy.linalg.sqrtm for numerical stability.
+- FID-Numpy: most calculations on pytorch. Matrix root extracting via scipy.linalg.sqrtm for numerical stability.
 - Clean-FID: proposed in [On Aliased Resizing and Surprising Subtleties in GAN Evaluation](https://arxiv.org/pdf/2104.11222.pdf). It uses another image preprocessing pipeline and bicubic filter for image reconstruction.
 
 ### Imporoved Precision and Recall for Distributions
