@@ -6,9 +6,9 @@ Welcome to our GitHub repository that contains the implementation of several met
 
 The repository contains implementations of the following metrics:
 
-- Inception Score
-- Frechet Inception Distance
-- Improved Precision and Recall for Distributions
+- Inception Score (is)
+- Frechet Inception Distance (fid, clean_fid, fid_numpy) 
+- Improved Precision and Recall for Distributions (precision_recall)
 
 ### Inception Score
 
@@ -33,7 +33,10 @@ $$\text{FID}(G) = \|\mu_g - \mu_r\|^2_2 + \text{tr}(\Sigma_g + \Sigma_r - 2 (\Si
 
 $\mu, \Sigma$ - mean vector and covariance matrix of generated or real features distribution.
 
-You can also compute Clean-FID, proposed in [On Aliased Resizing and Surprising Subtleties in GAN Evaluation](https://arxiv.org/pdf/2104.11222.pdf). It uses another image preprocessing pipeline and bicubic filter for image reconstruction.
+Three configurations of this metric are implemented:
+- FID: all calculations are performed on pytorch. Matrix root extracting from [matrix_sqrt](https://github.com/msubhransu/matrix-sqrt).
+- FID_NUMPY: most calculations on pytorch. Matrix root extracting via scipy.linalg.sqrtm for numerical stability.
+- Clean-FID: proposed in [On Aliased Resizing and Surprising Subtleties in GAN Evaluation](https://arxiv.org/pdf/2104.11222.pdf). It uses another image preprocessing pipeline and bicubic filter for image reconstruction.
 
 ### Imporoved Precision and Recall for Distributions
 
@@ -51,27 +54,34 @@ $$f(\phi, \Phi) := \text{I}[\exists \phi{'}: \|\phi - \phi{'}\|_2 \leq \|\phi{'}
 
 $$\text{precision}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_g|}\sum\limits_{\phi_g \in \Phi_g}f(\phi_g, \Phi_r) \space\space\space \text{recall}(\Phi_r, \Phi_g) = \dfrac{1}{|\Phi_r|}\sum\limits_{\phi_r \in \Phi_r}f(\phi_r, \Phi_g)$$
 
-## Results on CIFAR-10
+## Reproducing metrics' official implementatinos r  esults on CIFAR-10
 
 Official results
-- FID and IS: [pytorch-gan-metrics](https://github.com/w86763777/pytorch-gan-metrics)
-- ImprovedPRD: using [improved-precision-and-recall-metric](https://github.com/kynkaat/improved-precision-and-recall-metric)
+- IS: [improved-gan](https://github.com/openai/improved-gan)
+- FID (numpy): [TTUR](https://github.com/bioinf-jku/TTUR)
+- FID (torch implementation): [pytorch-gan-metrics](https://github.com/w86763777/pytorch-gan-metrics)
+- Clean FID: [clean-fid](https://github.com/GaParmar/clean-fid)
+- Precision and Recall: [improved-precision-and-recall-metric](https://github.com/kynkaat/improved-precision-and-recall-metric)
 
 ### Values
 
+Train/Test IS: Inception Score of cifar10 train(50k)/test(10k). FIDs and Precision and Recall were calculated beteween cifar10 train(50k) and test(10k) sets.
+
 | | Train IS | Test IS  | FID | FID Numpy | Clean FID | Precision | Recall |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
-| official | $$11.24 \pm 0.20$$ | $$10.98 \pm 0.22$$ | $$3.1508$$ | $$&mdash;$$ | $$&mdash;$$ | $$&mdash;$$ | $$&mdash;$$ |
+| official | $$11.24 \pm 0.20$$ | $$10.98 \pm 0.22$$ | $$3.1509$$ | $$3.1508$$ | $$&mdash;$$ | $$0.689$$ | $$0.695$$ |
 | gen-metrics-in-pytorch | $11.26 \pm 0.12$ | $10.95 \pm 0.43$ | $3.1501$ | $$3.1492$$ | $$3.23$$ | $$0.698$$ | $$0.69$$ |
 
 ### Required Time in Seconds
+
+Calculations were made on one V100 GPU.
 
 | Data type | Train IS | Test IS  | FID | FID Numpy | Clean FID | Precision and Recall |
 | ------------- | ------------- | -------------- | ------------- | ------------- | ------------- | ------------- |
 | folder | $$120$$ | $$27$$ | $$146$$ | $$174$$ | $$164$$ | $$294$$ |
 | stats | $$3.24$$ | $$1.96$$ | $$3.92$$ | $$31$$ | $$3.77$$ | $$40$$ |
 
-Metrics calculation with data type "folder" may last about 1100 seconds, when you create Dataset with images for the first time.
+Metrics calculation with data type "folder" may last about 1000 seconds when you create Dataset with images for the first time (before python caching).
 
 ## Metric values for different models (CIFAR10)
 
@@ -81,7 +91,7 @@ Models were taken from
 - DDPM: [diffusion](https://github.com/hojonathanho/diffusion)
 - DDPM-GAN: [denoising-diffusion-gan](https://github.com/NVlabs/denoising-diffusion-gan)
 
-The metrics were calculated between 50k generated images and CIFAR10 train set.
+The metrics were calculated between 50k generated images and CIFAR10 train set (50k).
 
 | Model | IS | FID | Clean FID | Precision | Recall |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
