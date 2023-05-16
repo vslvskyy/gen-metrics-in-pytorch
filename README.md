@@ -67,7 +67,7 @@ Official results
 
 Train/Test IS: Inception Score of cifar10 train(50k)/test(10k). FIDs and Precision and Recall were calculated beteween cifar10 train(50k) and test(10k) sets.
 
-| | Train IS | Test IS  | FID | FID Numpy | Clean FID | Precision | Recall |
+|Implementation| Train IS $\uparrow$ | Test IS $\uparrow$ | FID $\downarrow$ | FID Numpy $\downarrow$ | Clean FID $\downarrow$ | Precision $\uparrow$ | Recall $\uparrow$ |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
 | official | $$11.24 \pm 0.20$$ | $$10.98 \pm 0.22$$ | $$3.1509$$ | $$3.1508$$ | $$&mdash;$$ | $$0.689$$ | $$0.695$$ |
 | gen-metrics-in-pytorch | $11.26 \pm 0.12$ | $10.95 \pm 0.43$ | $3.1501$ | $$3.1492$$ | $$3.23$$ | $$0.698$$ | $$0.69$$ |
@@ -93,17 +93,17 @@ Models were taken from
 
 The metrics were calculated between 50k generated images and CIFAR10 train set (50k).
 
-| Model | IS | FID | Clean FID | Precision | Recall |
-| ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
-| DCGAN | $$5.98 \pm 0.08$$ | $$47.33$$ | $$58.71$$ | $$0.53$$ | $$0.25$$ |
-| WGAN(CNN) | $$6.46 \pm 0.06$$ | $$38.53$$ | $$45.80$$ | $$0.52$$ | $$0.15$$ |
-| WGAN-GP(CNN) | $$7.72 \pm 0.08$$ | $$18.74$$ | $$24.75$$ | $$0.54$$ | $$0.51$$ |
-| WGAN-GP(ResNet) | $$7.81 \pm 0.08$$ | $$16.75$$ | $$21.03$$ | $$0.55$$ | $$0.50$$ |
-| SNGAN(CNN) | $$7.64 \pm 0.05$$ | $$18.30$$ | $$23.29$$ | $$0.55$$ | $$0.50$$ |
-| SNGAN(ResNet) | $$8.20 \pm 0.12$$ | $$14.68$$ | $$18.76$$ | $$0.58$$ | $$0.51$$ |
-| STYLEGAN2-ADA | $$9.70 \pm 0.12$$ | $$2.94$$ | $$3.88$$ | $$0.64$$ | $$0.56$$ |
-| DDPM | $$9.48 \pm 0.10$$ | $$3.22$$ | $$4.01$$ | $$0.69$$ | $$0.58$$ |
-| DDPM-GAN | $$9.32 \pm 0.10$$ | $$4.20$$ | $$5.16$$ | $$0.66$$ | $$0.52$$ |
+| Model | IS $\uparrow$ | FID $\downarrow$ | FID Numpy $\downarrow$ | Clean FID $\downarrow$  | Precision $\uparrow$ | Recall $\uparrow$ |
+| ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
+| DCGAN | $$5.98 \pm 0.08$$ | $$47.33$$ | $$$$ | $$58.71$$ | $$0.53$$ | $$0.25$$ |
+| WGAN(CNN) | $$6.46 \pm 0.06$$ | $$38.53$$ | $$$$ | $$45.80$$ | $$0.52$$ | $$0.15$$ |
+| WGAN-GP(CNN) | $$7.72 \pm 0.08$$ | $$18.74$$ | $$$$ | $$24.75$$ | $$0.54$$ | $$0.51$$ |
+| WGAN-GP(ResNet) | $$7.81 \pm 0.08$$ | $$16.75$$ | $$$$ | $$21.03$$ | $$0.55$$ | $$0.50$$ |
+| SNGAN(CNN) | $$7.64 \pm 0.05$$ | $$18.30$$ | $$$$ | $$23.29$$ | $$0.55$$ | $$0.50$$ |
+| SNGAN(ResNet) | $$8.20 \pm 0.12$$ | $$14.68$$ | $$$$ | $$18.76$$ | $$0.58$$ | $$0.51$$ |
+| STYLEGAN2-ADA | $$9.70 \pm 0.12$$ | $$2.94$$ | $$$$ | $$3.88$$ | $$0.64$$ | $$0.56$$ |
+| DDPM | $$9.48 \pm 0.10$$ | $$3.22$$ | $$$$ | $$4.01$$ | $$0.69$$ | $$0.58$$ |
+| DDPM-GAN | $$9.32 \pm 0.10$$ | $$4.20$$ | $$$$ | $$5.16$$ | $$0.66$$ | $$0.52$$ |
 
 
 ## Installation guide
