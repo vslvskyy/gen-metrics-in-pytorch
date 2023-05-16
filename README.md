@@ -67,7 +67,7 @@ Official results
 
 Train/Test IS: Inception Score of cifar10 train(50k)/test(10k). FIDs and Precision and Recall were calculated beteween cifar10 train(50k) and test(10k) sets.
 
-|Implementation| Train IS $\uparrow$ | Test IS $\uparrow$ | FID $\downarrow$ | FID Numpy $\downarrow$ | Clean FID $\downarrow$ | Precision $\uparrow$ | Recall $\uparrow$ |
+|| Train IS $\uparrow$ | Test IS $\uparrow$ | FID $\downarrow$ | FID Numpy $\downarrow$ | Clean FID $\downarrow$ | Precision $\uparrow$ | Recall $\uparrow$ |
 | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
 | official | $$11.24 \pm 0.20$$ | $$10.98 \pm 0.22$$ | $$3.1509$$ | $$3.1508$$ | $$&mdash;$$ | $$0.689$$ | $$0.695$$ |
 | gen-metrics-in-pytorch | $11.26 \pm 0.12$ | $10.95 \pm 0.43$ | $3.1501$ | $$3.1492$$ | $$3.23$$ | $$0.698$$ | $$0.69$$ |
