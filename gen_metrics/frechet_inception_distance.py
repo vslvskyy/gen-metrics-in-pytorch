@@ -36,7 +36,7 @@ class Fid(BaseMetric):
     def compute_fid_from_stats(
         mu: torch.Tensor, sigma: torch.Tensor,
         ref_mu: torch.Tensor, ref_sigma: torch.Tensor,
-        eps: float = 1e-6
+        eps: float = 1e-3
     ) -> float:
         """
         Calculates Frechet Distance betweet two distributions
@@ -50,7 +50,7 @@ class Fid(BaseMetric):
             frechet distance between two distributions
         """
         diff = mu - ref_mu
-        # Run 50 iterations of newton-schulz to get the matrix sqrt of (sigma1 x sigma2)
+        # Run 50 iterations of newton-schulz to get the matrix sqrt of (sigma x ref_sigma)
         covmean = sqrt_newton_schulz(sigma.mm(ref_sigma).unsqueeze(0), 50).squeeze()
         if not torch.isfinite(covmean).all():
             msg = (
@@ -141,7 +141,7 @@ class Fid(BaseMetric):
 
     def __call__(
         self, gen_path: str, real_path: str, gen_type: str = "folder", real_type: str = "folder",
-        gen_save_path: Optional[str] = None, real_save_path: Optional[str] = None, eps: float = 1e-6, **kwargs
+        gen_save_path: Optional[str] = None, real_save_path: Optional[str] = None, eps: float = 1e-3, **kwargs
     ) -> float:
         """
         Calculates Frecher Inception Distance for real and generated data
