@@ -7,15 +7,17 @@ from gen_metrics.utils import Timer
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser("Calculate Generative Model Metric")
+    parser = argparse.ArgumentParser("Calculate Generative Models Metric")
 
     parser.add_argument("--metric", choices=metrics.items.keys(), required=True,
                         help=f"which metric to calculate ({', '.join(metrics.items.keys())})")
 
     parser.add_argument("--gen_data", type=str, nargs=2, required=True,
-                        help=f"generated data type {list(datasets.items.keys()) + ['stats']} and path to images")
+                        help=f"generated data type {list(datasets.items.keys()) + ['stats']} \
+                            and path to images or statistics")
     parser.add_argument("--real_data", type=str, nargs=2, required=False, default=(None, None),
-                        help=f"real data type {list(datasets.items.keys()) + ['stats']} and path to images")
+                        help=f"real data type {list(datasets.items.keys()) + ['stats']} \
+                            and path to images or statistics")
 
     parser.add_argument("--gen_save_path", type=str, required=False,
                         help="path to save generated data features or statistics")
