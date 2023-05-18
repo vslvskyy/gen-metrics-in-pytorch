@@ -19,7 +19,7 @@ class InceptionScore(BaseMetric):
     def __init__(
         self,
         device: torch.device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu"),
-        splits_n: int = 1,
+        splits_n: int = 10,
         **kwargs
     ):
         """
