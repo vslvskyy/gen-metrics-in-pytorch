@@ -136,7 +136,7 @@ Or you can use metrics classes directly:
 from gen_metrics import FID, InceptionScore, ImprovedPRD
 
 
-metric_class = FID(real_data)
+metric_class = FID()
 metric_val = metric_class(
     gen_path, real_path,
     gen_type, real_type,
