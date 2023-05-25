@@ -143,3 +143,17 @@ metric_val = metric_class(
     gen_save_path, real_save_path
 )
 ```
+
+```python
+from gen_metrics import ImprovedPRD
+
+
+precision = ImprovedPRD.compute_coverage(
+    real_knn_distances, real_ftrs, gen_ftrs
+)
+recall = ImprovedPRD.compute_coverage(
+    gen_knn_distances, gen_ftrs, real_ftrs
+)
+```
+
+
