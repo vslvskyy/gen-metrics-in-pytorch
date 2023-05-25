@@ -122,7 +122,7 @@ pip install -r requirements.txt
 
 ## Metrics calculating
 
-You can run `main.py` with appropriate arguments to calculate metrics:
+You can run `main.py` with appropriate arguments to calculate metrics. 
 ```shell
 python main.py \
     --metric fid \
@@ -133,7 +133,7 @@ python main.py \
 
 Or you can use metrics classes directly:
 ```python
-from gen_metrics import FID, InceptionScore, ImprovedPRD
+from gen_metrics import Fid, InceptionScore, ImprovedPRD
 
 
 metric_class = Fid()
